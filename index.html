@@ -1,1 +1,1465 @@
+<!DOCTYPE html>
+<html lang="vi" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Up Ảnh & Tệp Pro By Nguyễn Tuấn</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'%3E%3Cdefs%3E%3ClinearGradient id='g' x1='0%25' y1='0%25' x2='100%25' y2='100%25'%3E%3Cstop offset='0%25' stop-color='%237c3aed'/%3E%3Cstop offset='100%25' stop-color='%23a855f7'/%3E%3C/linearGradient%3E%3C/defs%3E%3Crect x='36' y='36' width='440' height='440' rx='120' fill='url(%23g)'/%3E%3Ctext x='50%25' y='54%25' font-family='system-ui, sans-serif' font-size='220' font-weight='900' fill='%23ffffff' text-anchor='middle' dominant-baseline='middle' letter-spacing='-5'%3ETN%3C/text%3E%3C/svg%3E" />
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.15.0/firebase-database-compat.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/color-thief/2.3.0/color-thief.umd.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/exifr/dist/lite.umd.js"></script>
+    
+    <style>
+        :root {
+            --primary: #6366f1; --success: #10b981; --danger: #ef4444; --warning: #f59e0b;
+            --bg: #f8fafc; --card-bg: #ffffff; --text-main: #1e293b; --text-muted: #64748b; --border: #e2e8f0;
+        }
+        [data-theme="dark"] {
+            --bg: #0f172a; --card-bg: #1e293b; --text-main: #f1f5f9; --text-muted: #94a3b8; --border: #334155;
+        }
+        body { font-family: 'Plus Jakarta Sans', sans-serif; background: var(--bg); color: var(--text-main); margin: 0; padding: 20px; transition: 0.3s; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        .card { background: var(--card-bg); padding: 25px; border-radius: 20px; border: 1px solid var(--border); margin-bottom: 20px; }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px; }
+        .stat-item { background: var(--bg); padding: 15px; border-radius: 12px; border: 1px solid var(--border); text-align: center; }
+        .stat-item p { margin: 8px 0 0; font-size: 18px; font-weight: 700; color: var(--primary); }
+        
+        .tabs { display: flex; gap: 8px; background: var(--bg); padding: 5px; border-radius: 12px; margin-bottom: 25px; overflow-x: auto;}
+        .tab-btn { flex: 1; text-align: center; padding: 12px; cursor: pointer; border-radius: 8px; font-weight: 700; color: var(--text-muted); border: none; background: transparent; transition: 0.2s; outline: none; white-space: nowrap;}
+        .tab-btn.active { background: var(--card-bg); color: var(--primary); border: 1px solid var(--border); }
 
+        .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 20px; }
+        .media-card { background: var(--card-bg); border-radius: 16px; overflow: hidden; border: 1px solid var(--border); transition: 0.3s; position: relative; display: flex; flex-direction: column; }
+        .preview-box { height: 180px; position: relative; background: var(--bg); overflow: hidden; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .preview-box img { width: 100%; height: 100%; object-fit: cover; }
+        
+        .tag-container { position: absolute; top: 10px; left: 10px; display: flex; flex-wrap: wrap; gap: 5px; z-index: 10; pointer-events: none;}
+        .tag-badge { background: var(--primary); color: white; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 700; }
+        .folder-badge { background: var(--warning); color: white; padding: 4px 8px; border-radius: 6px; font-size: 10px; font-weight: 700; }
+        
+        .img-checkbox { position: absolute; top: 10px; right: 10px; width: 22px; height: 22px; z-index: 15; accent-color: var(--primary); cursor: pointer; display: none; }
+
+        .img-meta { display: flex; justify-content: space-between; padding: 0 12px 10px; font-size: 11px; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+        
+        .action-row { display: flex; flex-wrap: wrap; gap: 5px; padding: 12px; justify-content: space-between;}
+        .btn { border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-size: 11px; font-weight: 700; color: white; transition: 0.2s; text-align: center; display: flex; align-items: center; justify-content: center; }
+        .btn:hover { opacity: 0.9; }
+
+        #dropZone { transition: 0.3s all ease; }
+        #dropZone.dragover { background: rgba(99, 102, 241, 0.1); border-color: var(--primary) !important; }
+
+        #progressArea { display: none; margin-top: 20px; background: var(--bg); padding: 20px; border-radius: 12px; border: 1px solid var(--border); border-left: 5px solid var(--primary); }
+        .progress-bar-container { background: var(--border); height: 8px; border-radius: 10px; overflow: hidden; margin: 10px 0; }
+        #barFill { background: var(--primary); height: 100%; width: 0%; transition: 0.4s; }
+
+        @keyframes slideUpFade {
+            0% { transform: translate(-50%, 20px); opacity: 0; }
+            100% { transform: translate(-50%, 0); opacity: 1; }
+        }
+        @keyframes modalPop {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        #toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 12px 30px; border-radius: 8px; display: none; z-index: 3000000; font-weight: 600; box-shadow: 0 10px 25px rgba(0,0,0,0.2); animation: slideUpFade 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;}
+        
+        #downloadOverlay, #expiryModal, #galleryModal, #commentModal, #customConfirmModal, #pinModal { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.9); z-index: 2000000; display: none; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
+        #pinModal { z-index: 99999999; } 
+
+        .modal-body { background: var(--card-bg); padding: 30px; border-radius: 20px; width: 380px; text-align: center; border: 1px solid var(--border); box-shadow: 0 15px 35px rgba(0,0,0,0.2); animation: modalPop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards; }
+        
+        #lightbox { position: fixed; inset: 0; background: rgba(0,0,0,0.95); z-index: 9999999; display: none; flex-direction: column; align-items: center; justify-content: center; }
+        .lb-img-container { position: relative; display: inline-block; max-width: 90vw; max-height: 70vh; }
+        .lb-img-container img { width: 100%; height: 100%; object-fit: contain; border-radius: 8px; cursor: crosshair; }
+        #ratioBox { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); border: 2px dashed #ef4444; box-shadow: 0 0 0 4000px rgba(0,0,0,0.85); display: none; pointer-events: none; transition: 0.3s ease; z-index: 10; }
+        
+        /* PIN-POINT CSS */
+        #annotationLayer { position: absolute; inset: 0; z-index: 11; display: none; pointer-events: none; }
+        .pin-point { position: absolute; width: 16px; height: 16px; background: var(--danger); border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 10px rgba(0,0,0,0.5); transform: translate(-50%, -50%); pointer-events: auto; cursor: pointer; transition: 0.2s; z-index: 12;}
+        .pin-point:hover { transform: translate(-50%, -50%) scale(1.2); }
+        .pin-point:hover::after { content: attr(data-comment); position: absolute; top: -35px; left: 50%; transform: translateX(-50%); background: white; color: black; padding: 5px 10px; border-radius: 6px; font-size: 12px; font-weight: bold; white-space: nowrap; box-shadow: 0 4px 10px rgba(0,0,0,0.2); pointer-events: none; }
+
+        .lb-close { position: absolute; top: 20px; right: 30px; font-size: 40px; color: white; cursor: pointer; border: none; background: transparent; font-weight: bold; z-index: 99; }
+        .lb-meta { color: white; margin-top: 15px; font-size: 14px; text-align: center; font-weight: 600; background: rgba(255,255,255,0.1); padding: 10px 20px; border-radius: 8px; line-height: 1.6;}
+        .lb-hint { color: var(--success); font-size: 12px; margin-top: 10px; display: flex; align-items: center; gap: 5px; justify-content:center;}
+        .ratio-btns { margin-top: 15px; display: flex; gap: 8px; justify-content: center; flex-wrap: wrap; }
+        .ratio-btns button { background: var(--border); color: var(--text-main); font-size: 10px; padding: 5px 15px; border-radius: 20px; border: none; cursor: pointer; font-weight: bold;}
+        .ratio-btns button:hover { background: var(--primary); color: white; }
+
+        #slideshow { position: fixed; inset: 0; background: #000; z-index: 99999999; display: none; flex-direction: column; align-items: center; justify-content: center; }
+        #slideshow img { max-width: 100vw; max-height: 100vh; object-fit: contain; }
+        .slide-btn { position: absolute; top: 50%; transform: translateY(-50%); background: transparent; color: rgba(255,255,255,0.3); border: none; font-size: 60px; padding: 20px; cursor: pointer; transition: 0.3s;}
+        .slide-btn:hover { color: white; }
+        .slide-prev { left: 20px; } .slide-next { right: 20px; }
+        .slide-close { position: absolute; top: 20px; right: 20px; font-size: 30px; background: rgba(255,0,0,0.5); border: none; color: white; cursor: pointer; border-radius: 50%; width: 50px; height: 50px; display:flex; align-items:center; justify-content:center;}
+
+        .tool-bar { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 15px; }
+        
+        .masonry-grid { column-count: 3; column-gap: 20px; padding: 20px; max-width: 1200px; margin: 0 auto; }
+        @media (max-width: 900px) { .masonry-grid { column-count: 2; } }
+        @media (max-width: 600px) { .masonry-grid { column-count: 1; } }
+        .masonry-item { break-inside: avoid; margin-bottom: 20px; background: var(--card-bg); border-radius: 16px; overflow: hidden; border: 1px solid var(--border); box-shadow: 0 4px 15px rgba(0,0,0,0.1); position: relative; }
+        .masonry-item img { width: 100%; display: block; border-bottom: 1px solid var(--border); cursor: pointer; }
+        .client-actions { display: flex; gap: 8px; padding: 15px 15px 5px; background: var(--bg); border-top: 1px solid var(--border); }
+        .client-btn { flex: 1; padding: 10px; border: none; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer; color: white; transition: 0.2s; }
+        .btn-approve { background: var(--success); }
+        .btn-approve:hover { background: #059669; }
+        .btn-reject { background: var(--warning); }
+        .btn-reject:hover { background: #d97706; }
+        
+        #galleryOverlay { position: fixed; inset: 0; background: var(--bg); z-index: 1000000; display: none; overflow-y: auto; }
+        .gallery-header { background: var(--card-bg); padding: 40px 20px; text-align: center; border-bottom: 1px solid var(--border); margin-bottom: 20px; }
+        .gallery-header h1 { font-size: 2.5rem; margin: 0 0 10px; color: var(--primary); }
+
+        #lockScreen { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(10px); z-index: 99999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.4s ease; }
+        .lock-container { background: var(--card-bg); padding: 40px; border-radius: 24px; text-align: center; border: 1px solid var(--border); box-shadow: 0 20px 40px rgba(0,0,0,0.2); max-width: 400px; width: 90%; animation: slideUp 0.5s ease; }
+        .lock-icon { font-size: 48px; margin-bottom: 15px; display: inline-block; background: var(--bg); padding: 15px; border-radius: 50%; box-shadow: inset 0 2px 4px rgba(0,0,0,0.05); }
+        .lock-container h2 { margin: 0 0 10px; font-size: 24px; color: var(--text-main); }
+        .lock-container p { color: var(--text-muted); font-size: 14px; margin-bottom: 25px; }
+        .pin-field { font-size: 32px; padding: 15px; width: 100%; max-width: 200px; text-align: center; border-radius: 16px; border: 2px solid var(--border); background: var(--bg); letter-spacing: 15px; outline: none; transition: 0.3s; color: var(--text-main); font-family: monospace;}
+        .pin-field:focus { border-color: var(--primary); box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.1); }
+        .pin-shake { animation: shake 0.4s cubic-bezier(.36,.07,.19,.97) both; border-color: var(--danger) !important; }
+        
+        @keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes shake { 
+            10%, 90% { transform: translate3d(-1px, 0, 0); } 
+            20%, 80% { transform: translate3d(2px, 0, 0); } 
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); } 
+            40%, 60% { transform: translate3d(4px, 0, 0); } 
+        }
+        
+        .link-item { background: var(--bg); padding: 15px; border-radius: 12px; border: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;}
+        @media (max-width: 600px) { .link-item { flex-direction: column; align-items: flex-start; gap: 10px;} .link-item > div:last-child {width: 100%; display: flex; gap: 10px;} }
+        
+        .gal-meta { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--border); font-size: 11px; color: var(--text-muted); }
+        .gal-tags { margin-bottom: 8px; display: flex; flex-wrap: wrap; gap: 4px; }
+
+        /* TRÌNH PHÁT MEDIA & MÔ PHỎNG IN ẤN / LED */
+        #safeZoneOverlay { position: absolute; inset: 4%; border: 2px dashed rgba(239, 68, 68, 0.9); pointer-events: none; display: none; z-index: 10; box-shadow: 0 0 0 9999px rgba(0,0,0,0.4); }
+        #ledGridOverlay { position: absolute; inset: 0; background-image: linear-gradient(rgba(0, 0, 0, 0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 0, 0, 0.4) 1px, transparent 1px); background-size: 8px 8px; pointer-events: none; display: none; z-index: 10; }
+        .media-icon { font-size: 40px; margin-bottom: 15px; }
+    </style>
+</head>
+<body onpaste="handlePaste(event)">
+
+<div id="slideshow">
+    <button class="slide-close" onclick="closeSlideshow()">×</button>
+    <img id="slideImg" src="">
+    <button class="slide-btn slide-prev" onclick="prevSlide()">❮</button>
+    <button class="slide-btn slide-next" onclick="nextSlide()">❯</button>
+</div>
+
+<!-- Lightbox -->
+<div id="lightbox">
+    <button class="lb-close" onclick="closeLightbox()">&times;</button>
+    
+    <div class="lb-img-container" id="lbMediaContainer">
+        <!-- Ảnh -->
+        <img id="lbImg" src="" crossorigin="Anonymous" style="display:none;">
+        
+        <!-- Trình phát Video -->
+        <video id="lbVideo" controls style="max-width: 90vw; max-height: 70vh; display:none; border-radius: 8px; box-shadow: 0 10px 25px rgba(0,0,0,0.5);"></video>
+        
+        <!-- Trình phát Audio -->
+        <div id="lbAudioContainer" style="display:none; padding: 50px 80px; background: var(--card-bg); border-radius: 16px; text-align: center; border: 1px solid var(--border); box-shadow: 0 10px 25px rgba(0,0,0,0.5);">
+            <div class="media-icon">🎵</div>
+            <h4 id="lbAudioName" style="margin: 0 0 20px; color: var(--text-main);">Tên Bài Hát</h4>
+            <audio id="lbAudio" controls style="width: 350px; outline: none;"></audio>
+        </div>
+
+        <div id="ratioBox"></div>
+        <div id="safeZoneOverlay"></div>
+        <div id="ledGridOverlay"></div>
+        <!-- Vùng chứa ghim Pin-point -->
+        <div id="annotationLayer"></div>
+    </div>
+
+    <div id="colorPalette" style="display:flex; gap:10px; justify-content:center; margin-top:15px; z-index:100"></div>
+
+    <div class="ratio-btns" id="lbControls">
+        <span style="color:white; font-size:12px; align-self:center;">Khung In:</span>
+        <button onclick="previewRatio(190, 120)">190x120</button>
+        <button onclick="previewRatio(350, 60)">350x60</button>
+        <button onclick="previewRatio(100, 75)">100x75</button>
+        <button onclick="previewRatio(1, 1)">1:1 (Vuông)</button>
+        <button onclick="previewRatio(0, 0)" style="background:var(--danger); color:white;">Tắt Khung</button>
+        
+        <span style="color:white; font-size:12px; align-self:center; margin-left: 15px;">Mô phỏng:</span>
+        <button onclick="toggleSafeZone()" style="background:#f59e0b; color:white;">🔲 Vùng An Toàn In</button>
+        <button onclick="toggleLedGrid()" style="background:#3b82f6; color:white;">🎛️ Lưới LED</button>
+
+        <span style="color:white; font-size:12px; align-self:center; margin-left: 15px;">Công cụ:</span>
+        <button onclick="togglePinMode()" id="btnPinMode" style="background:#ec4899; color:white;">📍 Bật chế độ Ghim Lỗi</button>
+    </div>
+
+    <div id="lbInfo" class="lb-meta"></div>
+    <div class="lb-hint" id="lbHintText">🎨 Nhấp vào bất kỳ điểm nào trên ảnh để lấy mã màu (Color Picker)</div>
+</div>
+
+<div id="downloadOverlay">
+    <div class="modal-body" style="width: auto; max-width: 90vw;">
+        <div id="countdownTimer" style="font-size:18px; font-weight:700; color:var(--danger); margin-bottom:15px;">Link sẽ hủy sau: --:--</div>
+        <img id="previewImgMain" style="max-width:100%; max-height:60vh; border-radius:12px;">
+        <p id="dlFileName" style="font-weight:700; margin:15px 0;"></p>
+        <button class="btn" style="background:var(--primary); padding:15px 40px; font-size:14px; margin: 0 auto;" id="finalDownloadBtn">📥 Tải Xuống Trực Tiếp</button>
+    </div>
+</div>
+
+<div id="galleryOverlay">
+    <div class="gallery-header">
+        <h1 id="galTitle">Tên Dự Án</h1>
+        <p style="color:var(--text-muted);" id="galSubtitle">Anh/chị vui lòng nhấp vào file để xem nét/tải về, chọn "Chốt File" hoặc "Báo Sửa".</p>
+    </div>
+    <div class="masonry-grid" id="galGrid"></div>
+</div>
+
+<div id="galleryModal">
+    <div class="modal-body">
+        <h3>🚀 Tạo Client Gallery</h3>
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:15px;">Tạo trang Landing Page chuyên nghiệp gửi khách duyệt.</p>
+        <input type="text" id="galleryName" placeholder="Nhập tên dự án / Tên khách hàng..." style="width:100%; padding:12px; border-radius:8px; border:1px solid var(--border); box-sizing:border-box; margin-bottom:15px; background:var(--bg); color:var(--text-main);">
+        <input type="text" id="gallerySlug" placeholder="Đường dẫn tùy chỉnh (VD: du-an-abc)..." style="width:100%; padding:12px; border-radius:8px; border:1px solid var(--border); box-sizing:border-box; margin-bottom:10px; background:var(--bg); color:var(--text-main);">
+        <div style="display:flex; gap:10px;">
+            <button class="btn" style="background:var(--border); color:var(--text-main); flex:1" onclick="closeGalleryModal()">Hủy</button>
+            <button class="btn" style="background:#ec4899; flex:1" id="confirmGalleryBtn">Tạo Link Gửi Khách</button>
+        </div>
+    </div>
+</div>
+
+<div id="expiryModal">
+    <div class="modal-body">
+        <h3 id="modalTitle">🔗 Tạo Link Chia Sẻ</h3>
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:15px;" id="modalSubtitle">Link sẽ tự hủy để bảo mật file.</p>
+        <input type="text" id="shareSlug" placeholder="Đường dẫn tùy chỉnh (Bỏ trống nếu muốn random)..." style="width:100%; padding:12px; border-radius:8px; border:1px solid var(--border); box-sizing:border-box; margin-bottom:15px; background:var(--bg); color:var(--text-main);">
+        <div style="text-align:left; margin-bottom:15px;" id="expiryTimeGroup">
+            <label style="font-size:12px; font-weight:bold;">⏱️ Thời gian tồn tại (Phút)</label>
+            <input type="number" id="customMins" style="width:100%; padding:12px; border-radius:8px; border:1px solid var(--border); box-sizing:border-box; margin-top:5px; background:var(--bg); color:var(--text-main);" value="60">
+        </div>
+        
+        <div style="text-align:left; margin-bottom:15px; background:var(--bg); padding:10px; border-radius:8px; border:1px solid var(--border);">
+            <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; font-weight:600;">
+                <input type="checkbox" id="watermarkCheck" style="width:18px; height:18px; accent-color:var(--primary);" onchange="toggleWmOptions()">
+                🛡️ Đóng dấu Watermark & Logo (Chỉ áp dụng với Ảnh)
+            </label>
+        </div>
+
+        <div id="wmOptionsWrapper" style="text-align:left; margin-bottom:20px; display:none;">
+            <label style="font-size:12px; font-weight:bold; color:var(--text-main);">✍️ Chữ Watermark</label>
+            <input type="text" id="wmTextInput" placeholder="Bỏ trống để không chèn chữ..." style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--border); box-sizing:border-box; margin-top:5px; margin-bottom:15px; font-size: 12px; background: var(--bg); color:var(--text-main);">
+
+            <label style="font-size:12px; font-weight:bold; color:var(--warning);">🖼️ Tải Logo góc lên (Tự động lưu)</label>
+            <input type="file" id="logoFileInput" accept="image/png, image/jpeg" style="width:100%; padding:10px; border-radius:8px; border:1px solid var(--border); box-sizing:border-box; margin-top:5px; font-size: 12px; background: var(--bg); color:var(--text-main);">
+            
+            <div id="logoPreviewWrapper" style="display:none; margin-top: 10px; text-align: center; background: var(--bg); padding: 10px; border-radius: 8px; border: 1px dashed var(--border);">
+                <img id="logoPreview" style="max-height: 40px; object-fit: contain;">
+                <button class="btn" style="background:var(--danger); padding: 5px 10px; font-size: 10px; display:block; margin: 10px auto 0;" onclick="clearLogo()">Xóa Logo Này</button>
+            </div>
+        </div>
+
+        <div style="display:flex; gap:10px;" id="singleShareBtns">
+            <button class="btn" style="background:var(--border); color:var(--text-main); flex:1" onclick="closeModal()">Hủy</button>
+            <button class="btn" style="background:var(--primary); flex:1" id="confirmShareBtn">Tạo & Copy Link</button>
+        </div>
+        
+        <div style="display:none; gap:10px;" id="batchShareBtns">
+            <button class="btn" style="background:var(--border); color:var(--text-main); flex:1" onclick="closeModal()">Hủy</button>
+            <button class="btn" style="background:var(--success); flex:1" id="confirmBatchZipBtn">Tải Auto-ZIP Phân Loại</button>
+        </div>
+    </div>
+</div>
+
+<div id="commentModal">
+    <div class="modal-body">
+        <h3>💬 Góp ý chỉnh sửa</h3>
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:15px;">File: <strong id="commentFileName" style="color:var(--primary);"></strong></p>
+        <input type="text" id="guestCommentName" placeholder="Tên của bạn (VD: Đại diện BGH, Cô Hương)..." style="width:100%; padding:12px; border-radius:8px; border:1px solid var(--border); box-sizing:border-box; margin-bottom:10px; background:var(--bg); color:var(--text-main);">
+        <textarea id="commentInput" placeholder="VD: Đổi biển số thành 19H - 130.98, bỏ texture..." style="width:100%; height: 100px; padding:12px; border-radius:8px; border:1px solid var(--border); box-sizing:border-box; margin-bottom:15px; background:var(--bg); color:var(--text-main); font-family: inherit; resize: vertical; outline: none;"></textarea>
+        <div style="display:flex; gap:10px;">
+            <button class="btn" style="background:var(--border); color:var(--text-main); flex:1" onclick="closeCommentModal()">Hủy bỏ</button>
+            <button class="btn" id="submitCommentBtn" style="background:var(--warning); flex:1" onclick="submitComment()">📋 Gửi Yêu Cầu</button>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Ghim Yêu Cầu Sửa Trực Tiếp Lên Ảnh -->
+<div id="pinModal">
+    <div class="modal-body">
+        <h3>📍 Ghim Yêu Cầu Sửa</h3>
+        <p style="font-size:12px; color:var(--text-muted); margin-bottom:15px;">Vị trí bạn chọn đã được đánh dấu.</p>
+        
+        <input type="text" id="pinGuestName" placeholder="Tên của bạn (VD: Đại diện BGH, Cô Hương)..." style="width:100%; padding:12px; border-radius:8px; border:1px solid var(--border); box-sizing:border-box; margin-bottom:10px; background:var(--bg); color:var(--text-main);">
+        
+        <textarea id="pinCommentInput" placeholder="Nhập yêu cầu sửa tại vị trí này (VD: Đổi màu logo thành đỏ)..." style="width:100%; height: 90px; padding:12px; border-radius:8px; border:1px solid var(--border); box-sizing:border-box; margin-bottom:15px; background:var(--bg); color:var(--text-main); font-family: inherit; resize: vertical; outline: none;"></textarea>
+        
+        <div style="display:flex; gap:10px;">
+            <button class="btn" style="background:var(--border); color:var(--text-main); flex:1" onclick="closePinModal()">Hủy bỏ</button>
+            <button class="btn" id="submitPinBtn" style="background:#ec4899; flex:1" onclick="submitPinComment()">📍 Ghim Lên Ảnh</button>
+        </div>
+    </div>
+</div>
+
+<div id="customConfirmModal">
+    <div class="modal-body" style="width: 320px;">
+        <div style="font-size: 45px; margin-bottom: 10px;">⚠️</div>
+        <h3 id="confirmTitle" style="margin-top: 0; color: var(--text-main);">Xác Nhận</h3>
+        <p id="confirmMessage" style="margin-bottom: 25px; font-size: 14px; color: var(--text-muted); line-height: 1.5;"></p>
+        <div style="display:flex; gap:10px;">
+            <button class="btn" style="background:var(--border); color:var(--text-main); flex:1" onclick="closeConfirm(false)">Hủy</button>
+            <button class="btn" style="background:var(--danger); flex:1" id="confirmYesBtn">Đồng ý</button>
+        </div>
+    </div>
+</div>
+
+<div id="globalDropOverlay" style="display:none; position:fixed; inset:0; background:rgba(99,102,241,0.9); z-index:9999999; flex-direction:column; align-items:center; justify-content:center; color:white; border: 8px dashed rgba(255,255,255,0.5); backdrop-filter: blur(5px); transition: 0.3s;">
+    <h1 style="font-size: 3rem; margin-bottom: 10px;">📥 THẢ TỆP VÀO ĐÂY</h1>
+    <p style="font-size: 1.2rem; font-weight: 600;">Hệ thống sẽ tự động tải lên...</p>
+</div>
+
+<div id="lockScreen">
+    <div class="lock-container">
+        <div class="lock-icon">🔐</div>
+        <h2>Bảo Mật Hệ Thống</h2>
+        <p>Vui lòng nhập mã PIN để truy cập thư viện.</p>
+        <input type="password" id="pinInput" class="pin-field" maxlength="4" placeholder="••••">
+        <div id="pinError" style="color: var(--danger); font-size: 12px; margin-top: 15px; opacity: 0; transition: 0.3s; font-weight: 600;">Mã PIN không chính xác!</div>
+    </div>
+</div>
+
+<input type="file" id="updateFileInput" style="display:none">
+
+<div class="container" id="mainApp">
+    <div class="card" style="border:none; padding:15px 25px;">
+        <div class="header" style="display:flex; justify-content:space-between; align-items:center;">
+            <h2 style="margin:0">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" style="height: 24px; width: 24px;">
+        <defs>
+          <linearGradient id="hl-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#7c3aed" />
+            <stop offset="100%" stop-color="#a855f7" />
+          </linearGradient>
+        </defs>
+        <rect width="512" height="512" rx="120" fill="url(#hl-grad)"/>
+        <text x="50%" y="54%" font-family="system-ui, sans-serif" font-size="240" font-weight="900" fill="#ffffff" text-anchor="middle" dominant-baseline="middle" letter-spacing="-5">TN</text>
+      </svg> Up Ảnh & File By Tuấn Nguyễn <span style="color:var(--primary)">V10-PRO</span></h2>
+            <div style="display:flex; gap:10px;">
+                <button class="btn" style="background:var(--bg); color:var(--text-main); border:1px solid var(--border);" onclick="toggleTheme()">🌓 Giao Diện</button>
+                <button class="btn" style="background:var(--danger); width:auto;" onclick="logout()">🔒 Khóa</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="tabs">
+            <button class="tab-btn active" onclick="switchTab('stats', this)">📊 Thống Kê</button>
+            <button class="tab-btn" onclick="switchTab('upload', this)">📤 Tải Lên Tệp</button>
+            <button class="tab-btn" id="tabLibraryBtn" onclick="switchTab('library', this)">🖼️ Thư Viện</button>
+            <button class="tab-btn" onclick="switchTab('links', this)">🔗 Quản Lý Link</button>
+            <button class="tab-btn" onclick="switchTab('notifs', this)">🔔 Hoạt Động (Logs) <span id="notifBadge" style="background:var(--danger); color:white; padding:2px 6px; border-radius:10px; font-size:10px; display:none;">0</span></button>
+            <button class="tab-btn" onclick="switchTab('trash', this)" style="color:var(--danger)">🗑️ Thùng Rác</button>
+        </div>
+
+        <div id="tab-stats" class="tab-content">
+            <div class="stats-grid">
+                <div class="stat-item"><h4>Tổng Tệp</h4><p id="statCount">0</p></div>
+                <div class="stat-item"><h4>Dung Lượng</h4><p id="statSize">0 MB</p></div>
+                <div class="stat-item"><h4>Thùng Rác</h4><p id="statTrash">0</p></div>
+                <div class="stat-item"><h4>Tổng Lượt Xem (Views)</h4><p id="statViews">0</p></div>
+            </div>
+        </div>
+
+        <div id="tab-upload" class="tab-content" style="display:none">
+            <div style="display:flex; gap:10px; margin-bottom:15px; flex-wrap:wrap;">
+                <input type="text" id="uploadFolder" class="tab-btn" style="flex:1; border:1px solid var(--border); text-align:left; padding-left:15px; margin:0; background:var(--bg); color:var(--text-main);" placeholder="📂 Dự án / Khách hàng (Client Workspace)...">
+                <input type="text" id="uploadTags" class="tab-btn" style="flex:1; border:1px solid var(--border); text-align:left; padding-left:15px; margin:0; background:var(--bg); color:var(--text-main);" placeholder="🏷️ Nhập Tags (Cách nhau bằng dấu phẩy)...">
+            </div>
+            <div id="dropZone" style="border:2px dashed var(--border); border-radius:16px; padding:60px; text-align:center; cursor:pointer; background:var(--bg);" onclick="document.getElementById('fileInput').click()">
+                <h3><span style="color:var(--primary)">Click, Kéo Thả</span> hoặc <span style="color:var(--primary)">Ctrl + V</span> mọi định dạng (PSD, ZIP, MP4...)</h3>
+                <input type="file" id="fileInput" multiple style="display:none">
+            </div>
+            <div id="progressArea">
+                <div style="display:flex; justify-content:space-between; margin-bottom:5px;"><span id="progressStatus">Sẵn sàng...</span><span id="progressPercent">0%</span></div>
+                <div class="progress-bar-container"><div id="barFill"></div></div>
+                <div style="font-size:12px; color:var(--text-muted); display:flex; justify-content:space-between;"><span id="currentFileName">...</span><span id="fileCounter">0/0</span></div>
+            </div>
+        </div>
+
+        <div id="tab-library" class="tab-content" style="display:none">
+            <div class="tool-bar">
+                <input type="text" id="batchNameInput" class="tab-btn" style="text-align:left; border:1px solid var(--border); margin:0; background:var(--bg); color:var(--text-main);" placeholder="Đổi tên hàng loạt...">
+                <button class="btn" style="background:var(--primary)" onclick="batchRename()">✏️ Đổi Tên</button>
+                <button class="btn" style="background:#8b5cf6" onclick="startSlideshow()">🎬 Phát Slide (Chỉ Ảnh)</button>
+                <button class="btn" style="background:var(--success)" onclick="toggleBatchSelect()">☑️ Chọn Nhiều</button>
+                <button class="btn" style="background:#ec4899; display:none;" id="batchGalleryBtn" onclick="openGalleryModal()">🚀 Tạo Landing Page</button>
+                <button class="btn" style="background:var(--warning); display:none;" id="batchWmBtn" onclick="openBatchModal()">🛡️ Đóng Dấu & Nén Auto-ZIP</button>
+                <button class="btn" style="background:var(--danger)" id="deleteFilterBtn" onclick="deleteFiltered()">🗑️ Xóa Lọc</button>
+            </div>
+            
+            <div style="display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap;">
+                <select id="folderFilter" class="tab-btn" style="flex:1; border:1px solid var(--border); margin:0; background:var(--bg); color:var(--text-main);" onchange="filterData()">
+                    <option value="">📁 Tất cả Dự án</option>
+                </select>
+                <input type="text" id="searchBox" class="tab-btn" style="flex:2; text-align:left; border:1px solid var(--border); margin:0; background:var(--bg); color:var(--text-main);" placeholder="Tìm tên file hoặc Tag..." oninput="filterData()">
+                <select id="sortBox" class="tab-btn" style="flex:1; border:1px solid var(--border); margin:0; background:var(--bg); color:var(--text-main);" onchange="filterData()">
+                    <option value="newest">🕒 Mới nhất</option>
+                    <option value="oldest">🕰️ Cũ nhất</option>
+                    <option value="size_desc">📉 Nặng nhất</option>
+                    <option value="size_asc">📈 Nhẹ nhất</option>
+                </select>
+            </div>
+            
+            <div class="gallery" id="historyList"></div>
+            <div id="loadMoreTrigger" style="text-align:center; padding:20px; font-size:14px; font-weight:700; color:var(--primary); display:none;">🔄 Đang tải thêm tệp...</div>
+        </div>
+
+        <div id="tab-links" class="tab-content" style="display:none">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h3 style="color:var(--primary); margin:0;">🚀 Các Landing Page (Gallery)</h3>
+            </div>
+            <div id="galleryLinksList" style="display:flex; flex-direction:column; gap:10px; margin-bottom: 30px;"></div>
+
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h3 style="color:var(--warning); margin:0;">🔗 Các Link Tự Hủy (Chia sẻ đơn)</h3>
+                <button class="btn" style="background:var(--danger); padding: 5px 15px; font-size: 12px;" onclick="deleteExpiredLinks()">🔥 Xóa Link Hết Hạn</button>
+            </div>
+            <div id="singleLinksList" style="display:flex; flex-direction:column; gap:10px;"></div>
+        </div>
+
+        <div id="tab-notifs" class="tab-content" style="display:none">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+                <h3 style="color:var(--primary); margin:0;">🔔 Hoạt Động (Activity Log)</h3>
+                <button class="btn" style="background:var(--danger);" onclick="clearAllNotifications()">🧹 Xóa Tất Cả</button>
+            </div>
+            <div id="notificationsList" style="display:flex; flex-direction:column; gap:10px; margin-bottom: 30px;"></div>
+        </div>
+
+        <div id="editLinkModal" class="modal-body" style="position:fixed; inset:0; background:rgba(15, 23, 42, 0.9); z-index:3000000; display:none; align-items:center; justify-content:center; backdrop-filter:blur(5px);">
+            <div class="modal-body" style="background:var(--card-bg); width:350px;">
+                <h3 id="editModalTitle">Chỉnh sửa Link</h3>
+                <div id="editFields" style="text-align:left; margin: 20px 0;"></div>
+                <div style="display:flex; gap:10px;">
+                    <button class="btn" style="background:var(--border); color:var(--text-main); flex:1" onclick="document.getElementById('editLinkModal').style.display='none'">Hủy</button>
+                    <button class="btn" style="background:var(--primary); flex:1" id="saveEditBtn">Lưu thay đổi</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="tab-trash" class="tab-content" style="display:none">
+            <div style="display:flex; gap:10px; margin-bottom:20px;">
+                <button class="btn" style="background:var(--success); flex:1" onclick="restoreAll()">♻️ Khôi Phục Hết</button>
+                <button class="btn" style="background:var(--danger); flex:1" onclick="emptyTrash()">🗑️ Xóa Sạch Vĩnh Viễn</button>
+            </div>
+            <div class="gallery" id="trashList"></div>
+        </div>
+    </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+    // --- FIREBASE CONFIG ---
+    const firebaseConfig = {
+        apiKey: "AIzaSyA4pxGrWWcg4aEpitzd44PoKSHjipHK8-Q",
+        authDomain: "upanhtcs.firebaseapp.com",
+        databaseURL: "https://upanhtcs-default-rtdb.asia-southeast1.firebasedatabase.app",
+        projectId: "upanhtcs",
+        storageBucket: "upanhtcs.firebasestorage.app",
+        messagingSenderId: "1006565880208",
+        appId: "1:1006565880208:web:65391b6a914061c9844315"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.database();
+    const IMGBB_KEY = 'f568cdfc8aa43cc4da34df1330268310';
+    
+    // --- TELEGRAM BOT NOTIFICATION CONFIG ---
+    const TELEGRAM_BOT_TOKEN = "8705718246:AAEiQ1HGjzjiYOO6rv8kmxSmomQ4dyLNELY"; 
+    const TELEGRAM_CHAT_ID = "6111832577"; 
+    
+    function pushWebhook(title, desc) {
+        if(!TELEGRAM_BOT_TOKEN || !TELEGRAM_CHAT_ID) return;
+        
+        const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
+        const message = `🔔 *${title}*\n${desc}`;
+        
+        fetch(url, {
+            method: 'POST', 
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ 
+                chat_id: TELEGRAM_CHAT_ID, 
+                text: message,
+                parse_mode: "HTML"
+            })
+        }).catch(e => console.log("Telegram webhook error:", e));
+    }
+
+    let cloudData = {}, trashData = {}, currentImg = {}, currentFilteredKeys = [], currentTab = 'stats';
+    let notificationsData = {};
+    let sortedKeys = [], renderIndex = 0; const BATCH_SIZE = 20;
+    let sharedLinksData = {}; let galleriesData = {};
+
+    let confirmCallback = null;
+    window.customConfirm = (msg, callback) => {
+        document.getElementById('confirmMessage').innerText = msg; confirmCallback = callback;
+        document.getElementById('customConfirmModal').style.display = 'flex';
+    };
+
+    window.closeConfirm = (result) => {
+        document.getElementById('customConfirmModal').style.display = 'none';
+        if(result && confirmCallback) { confirmCallback(); confirmCallback = null; }
+    };
+    document.getElementById('confirmYesBtn').onclick = () => closeConfirm(true);
+
+    window.forceDownload = async (url, filename) => {
+        try {
+            if(typeof showToast === 'function') showToast("Đang chuẩn bị tệp tải xuống, vui lòng đợi...");
+            const response = await fetch(url);
+            if (!response.ok) throw new Error("Network error");
+            const blob = await response.blob(); saveAs(blob, filename); 
+        } catch (err) {
+            const a = document.createElement('a'); a.href = url; a.download = filename; a.target = "_blank";
+            document.body.appendChild(a); a.click(); document.body.removeChild(a);
+        }
+    };
+
+    function toggleTheme() {
+        const next = document.documentElement.getAttribute('data-theme') === 'light' ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-theme', next); localStorage.setItem('evo_theme', next);
+    }
+    if(localStorage.getItem('evo_theme')) document.documentElement.setAttribute('data-theme', localStorage.getItem('evo_theme'));
+
+    let currentLogoUrl = localStorage.getItem('saved_wm_logo_url') || "";
+
+    window.toggleWmOptions = () => {
+        const checked = document.getElementById('watermarkCheck').checked;
+        document.getElementById('wmOptionsWrapper').style.display = checked ? 'block' : 'none';
+        if (checked && currentLogoUrl) { document.getElementById('logoPreviewWrapper').style.display = 'block'; document.getElementById('logoPreview').src = currentLogoUrl; }
+    };
+
+    document.getElementById('logoFileInput').addEventListener('change', async function(e) {
+        const file = e.target.files[0]; if (!file) return; showToast("Đang tải Logo lên máy chủ...");
+        const fd = new FormData(); fd.append('image', file);
+        try {
+            const res = await fetch('https://api.imgbb.com/1/upload?key=' + IMGBB_KEY, { method: 'POST', body: fd });
+            const json = await res.json();
+            if (json.success) {
+                currentLogoUrl = json.data.url; localStorage.setItem('saved_wm_logo_url', currentLogoUrl);
+                showToast("Logo đã được lưu thành công!");
+                document.getElementById('logoPreviewWrapper').style.display = 'block'; document.getElementById('logoPreview').src = currentLogoUrl; document.getElementById('logoFileInput').value = ''; 
+            }
+        } catch (err) { showToast("Lỗi tải Logo!"); }
+    });
+
+    window.clearLogo = () => { currentLogoUrl = ""; localStorage.removeItem('saved_wm_logo_url'); document.getElementById('logoPreviewWrapper').style.display = 'none'; showToast("Đã xóa Logo."); };
+
+    // --- ACTIVITY LOG HELPER ---
+    function logActivity(type, galKey, galTitle, imgName, actionText, guest = "Khách") {
+        db.ref('notifications').push({
+            type: type, galKey, galTitle, imgName, comment: actionText, guest: guest, time: Date.now()
+        });
+    }
+
+    const dlKey = new URLSearchParams(window.location.search).get('dl');
+    const galKey = new URLSearchParams(window.location.search).get('gallery');
+
+    if (dlKey) {
+        db.ref('shared_links/' + dlKey + '/views').transaction(v => (v || 0) + 1);
+        document.getElementById('mainApp').style.display = 'none'; document.getElementById('lockScreen').style.display = 'none'; document.getElementById('downloadOverlay').style.display = 'flex';
+        db.ref('shared_links/' + dlKey).once('value', s => {
+            const d = s.val();
+            if (d && Date.now() < d.expires) {
+                document.getElementById('dlFileName').innerText = d.name;
+                const isImg = d.isImage !== false;
+
+                if(d.wm && isImg) {
+                    const img = new Image(); img.crossOrigin = "Anonymous"; img.src = d.url;
+                    img.onload = () => {
+                        const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+                        const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0);
+                        ctx.save(); ctx.font = `bold ${Math.floor(img.width/12)}px sans-serif`; ctx.fillStyle = "rgba(255, 255, 255, 0.4)";
+                        ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.translate(c.width/2, c.height/2); ctx.rotate(-Math.PI/4);
+                        const textToDraw = d.wmText !== undefined ? d.wmText : "DEMO - NGUYỄN TUẤN";
+                        ctx.fillText(textToDraw, 0, 0); ctx.restore();
+                        
+                        const exportCanvas = () => {
+                            const wmUrl = c.toDataURL('image/jpeg', 0.9); document.getElementById('previewImgMain').src = wmUrl;
+                            document.getElementById('finalDownloadBtn').onclick = () => { 
+                                logActivity('download', dlKey, 'Link Share', d.name, 'Đã tải ảnh qua Link đơn', 'Khách lạ');
+                                c.toBlob(blob => saveAs(blob, "DEMO_" + d.name), "image/jpeg", 0.9); 
+                            };
+                        };
+                        if (d.logoUrl) {
+                            const logoImg = new Image(); logoImg.crossOrigin = "Anonymous"; logoImg.src = d.logoUrl;
+                            logoImg.onload = () => {
+                                const maxLogoW = c.width * 0.15; const scale = maxLogoW / logoImg.width; const logoW = logoImg.width * scale; const logoH = logoImg.height * scale;
+                                const padding = c.width * 0.02; ctx.drawImage(logoImg, c.width - logoW - padding, c.height - logoH - padding, logoW, logoH);
+                                exportCanvas();
+                            };
+                            logoImg.onerror = exportCanvas; 
+                        } else exportCanvas(); 
+                    };
+                    img.onerror = () => { 
+                        document.getElementById('previewImgMain').src = d.thumb || d.url; 
+                        document.getElementById('finalDownloadBtn').innerText = "⬇️ Tải Xuống Trực Tiếp";
+                        document.getElementById('finalDownloadBtn').onclick = () => { logActivity('download', dlKey, 'Link Share', d.name, 'Đã tải file gốc', 'Khách lạ'); forceDownload(d.url, d.name); };
+                    };
+                } else { 
+                    document.getElementById('previewImgMain').src = d.thumb || d.url; 
+                    if(!isImg) document.getElementById('previewImgMain').style.padding = "40px";
+                    document.getElementById('finalDownloadBtn').innerText = "⬇️ Tải Xuống Trực Tiếp";
+                    document.getElementById('finalDownloadBtn').onclick = () => { logActivity('download', dlKey, 'Link Share', d.name, 'Đã tải file gốc', 'Khách lạ'); forceDownload(d.url, d.url); forceDownload(d.url, d.name); };
+                }
+
+                setInterval(() => {
+                    const diff = d.expires - Date.now();
+                    if (diff <= 0) { document.getElementById('countdownTimer').innerText = "Hết hạn!"; document.getElementById('finalDownloadBtn').style.display='none'; return; }
+                    const m = Math.floor(diff/60000); const sec = Math.floor((diff%60000)/1000);
+                    document.getElementById('countdownTimer').innerText = `Link tự hủy sau: ${m}:${sec < 10 ? '0' : ''}${sec}`;
+                }, 1000);
+            } else { 
+                showToast("Link đã hết hạn hoặc không tồn tại!"); setTimeout(() => window.location.href="/", 2000); 
+            }
+        });
+    } else if (galKey) {
+        db.ref('galleries/' + galKey + '/views').transaction(v => (v || 0) + 1);
+
+        document.getElementById('mainApp').style.display = 'none'; document.getElementById('lockScreen').style.display = 'none'; document.getElementById('galleryOverlay').style.display = 'block';
+        
+        db.ref('galleries/' + galKey).on('value', s => {
+            const d = s.val();
+            if (d) {
+                document.getElementById('galTitle').innerText = d.title || "Dự Án Thiết Kế";
+                const grid = document.getElementById('galGrid'); grid.innerHTML = ''; 
+                
+                // An toàn: Firebase có thể trả về Object nếu thiếu index
+                const rawImages = d.images || [];
+                const imagesArray = Array.isArray(rawImages) ? rawImages : Object.values(rawImages);
+
+                imagesArray.forEach((img, index) => {
+                    if(!img) return;
+                    let approvalsArr = img.approvals ? Object.values(img.approvals).map(a => a.name) : [];
+                    let isApproved = img.status === 'approved' || approvalsArr.length > 0;
+                    const isImg = img.isImage !== false; 
+                    
+                    let tagsHtml = ''; let innerTags = '';
+                    if (img.isEdited) innerTags += `<span class="tag-badge" style="background:var(--success); color:white; font-size:10px; border: 1px solid var(--success);">✨ Đã sửa</span>`;
+                    if (img.tags && img.tags.length > 0) innerTags += img.tags.map(t => `<span class="tag-badge" style="background:var(--bg); color:var(--primary); border:1px solid var(--border); font-size:9px;">#${t}</span>`).join('');
+                    if (innerTags !== '') tagsHtml = `<div class="gal-tags">${innerTags}</div>`;
+
+                    const resText = (img.width && img.height) ? `📏 ${img.width} x ${img.height}` : (isImg ? "" : "📄 FILE");
+                    const sizeText = `💾 ${formatSize(img.size)}`;
+
+                    let btnText = isApproved ? `🎉 ĐÃ CHỐT (${approvalsArr.join(', ')})` : `✅ Chốt File`;
+                    let approveBtn = isApproved ? 
+                        `<button class="client-btn" style="background:var(--border); color:var(--text-main);" disabled>${btnText}</button>` : 
+                        `<button class="client-btn btn-approve" id="btn-approve-${index}" onclick="clientApprove(${index}, this, '${img.name.replace(/'/g, "\\'")}')">✅ Chốt File</button>`;
+
+                    let commentBox = img.comment ? `<div id="comment-box-${index}" style="margin-top: 10px; font-size: 11px; color: var(--warning); background: var(--bg); padding: 8px; border-radius: 6px; border: 1px dashed var(--warning);">📝 Báo sửa: ${img.comment}</div>` : `<div id="comment-box-${index}"></div>`;
+                    
+                    let pinList = '';
+                    if(img.annotations) {
+                        Object.values(img.annotations).forEach(ann => {
+                            pinList += `<div style="margin-top: 5px; font-size: 10px; color: var(--danger); background: var(--bg); padding: 4px; border-radius: 4px; border: 1px dashed var(--danger);">📍 ${ann.guest || 'Khách'}: ${ann.text}</div>`;
+                        });
+                    }
+
+                    const ext = String(img.name || "").split('.').pop().toLowerCase();
+                    const isMedia = ['mp4', 'webm', 'ogg', 'mov', 'mp3', 'wav', 'flac', 'm4a'].includes(ext);
+                    const clickAction = (isImg || isMedia) ? `openLightbox('${img.url}', '${img.name.replace(/'/g, "\\'")}', '', '', ${img.width||0}, ${img.height||0}, ${index}, '${ext}')` : `window.open('${img.url}', '_blank')`;
+
+                    const item = document.createElement('div'); item.className = 'masonry-item';
+                    item.innerHTML = `
+                        <img src="${img.thumb || img.url}" style="${!isImg ? 'object-fit: contain; padding: 30px; background: #fff;' : ''}" onclick="${clickAction}">
+                        <div style="padding: 15px;">
+                            <p style="margin:0 0 5px; font-size:13px; font-weight:700; word-break: break-all;">${img.name}</p>
+                            ${tagsHtml}
+                            <div class="gal-meta"><span>${resText}</span><span>${sizeText}</span></div>
+                            <div class="client-actions" style="margin-top:12px;">
+                                ${approveBtn}
+                                <button class="client-btn btn-reject" onclick="clientComment(${index}, '${img.name.replace(/'/g, "\\'")}')">💬 Báo Sửa</button>
+                            </div>
+                            ${commentBox}
+                            ${pinList}
+                        </div>
+                    `;
+                    grid.appendChild(item);
+                });
+            } else { 
+                showToast("Link dự án này không tồn tại hoặc đã bị xóa!"); setTimeout(() => window.location.href="/", 2000);
+            }
+        });
+    }
+
+    // --- WORKFLOW KHÁCH DUYỆT ---
+    window.clientApprove = (index, btn, imgName) => {
+        let guestName = prompt("Vui lòng nhập tên của bạn (VD: Đại diện BGH, Cô Hương...):");
+        if(!guestName) return;
+        
+        btn.innerText = "⏳ Đang lưu...";
+        const approvalRef = db.ref(`galleries/${galKey}/images/${index}/approvals`);
+        
+        approvalRef.push({ name: guestName, time: Date.now() }).then(() => {
+            db.ref(`galleries/${galKey}/images/${index}`).update({ status: 'approved' }).then(() => {
+                logActivity('approve', galKey, document.getElementById('galTitle').innerText, imgName, "Đã chốt file này", guestName);
+                pushWebhook("✅ KHÁCH ĐÃ CHỐT FILE", `Dự án: ${document.getElementById('galTitle').innerText}\nFile: ${imgName}\nNgười chốt: ${guestName}`);
+                if(typeof showToast === 'function') showToast("Đã ghi nhận người chốt file!");
+            });
+        }).catch(err => { showToast("Lỗi khi lưu lên máy chủ!"); btn.innerText = "✅ Chốt File"; });
+    };
+    
+    let currentCommentImgName = ""; let currentCommentIndex = -1; 
+    window.clientComment = (index, imgName) => {
+        currentCommentIndex = index; currentCommentImgName = imgName;
+        document.getElementById('commentFileName').innerText = imgName;
+        document.getElementById('commentInput').value = ""; document.getElementById('commentModal').style.display = 'flex';
+        setTimeout(() => document.getElementById('commentInput').focus(), 100);
+    };
+
+    window.closeCommentModal = () => document.getElementById('commentModal').style.display = 'none';
+
+    window.submitComment = () => {
+        const comment = document.getElementById('commentInput').value.trim();
+        const guestName = document.getElementById('guestCommentName').value.trim() || 'Khách';
+        
+        if (comment) {
+            const btn = document.getElementById('submitCommentBtn');
+            const originalText = btn.innerHTML; const originalBg = btn.style.background;
+            btn.innerHTML = "⏳ Đang lưu...";
+            
+            const fullComment = `[${guestName}] ${comment}`;
+            db.ref(`galleries/${galKey}/images/${currentCommentIndex}`).update({ status: 'commented', comment: fullComment }).then(() => {
+                logActivity('comment', galKey, document.getElementById('galTitle').innerText, currentCommentImgName, fullComment, guestName);
+                pushWebhook("⚠️ YÊU CẦU SỬA FILE", `Dự án: ${document.getElementById('galTitle').innerText}\nFile: ${currentCommentImgName}\nNgười yêu cầu: ${guestName}\nNội dung: ${comment}`);
+                
+                btn.innerHTML = "✅ Đã Lưu!"; btn.style.background = "var(--success)";
+                if(typeof showToast === 'function') showToast("Đã gửi thông báo cho Designer!");
+                setTimeout(() => { btn.innerHTML = originalText; btn.style.background = originalBg; closeCommentModal(); }, 2000);
+            }).catch(err => { showToast("Lỗi không thể lưu bình luận!"); btn.innerHTML = originalText; });
+        } else {
+            const input = document.getElementById('commentInput'); 
+            input.style.border = "1px solid var(--danger)"; setTimeout(() => input.style.border = "1px solid var(--border)", 500); input.focus();
+        }
+    };
+
+    document.getElementById('pinInput').oninput = (e) => { 
+        const val = e.target.value;
+        if(val.length === 4) {
+            if (val === "9123") { 
+                document.getElementById('pinInput').blur(); document.getElementById('lockScreen').style.opacity = '0';
+                setTimeout(() => { document.getElementById('lockScreen').style.display = 'none'; sessionStorage.setItem('unlocked', 'true'); listenFirebase(); }, 400); 
+            } else {
+                const input = document.getElementById('pinInput'); const err = document.getElementById('pinError');
+                input.classList.add('pin-shake'); err.style.opacity = '1';
+                setTimeout(() => { input.classList.remove('pin-shake'); input.value = ""; err.style.opacity = '0'; input.focus(); }, 500);
+            }
+        }
+    };
+    
+    if (!dlKey && !galKey && sessionStorage.getItem('unlocked') === 'true') { document.getElementById('lockScreen').style.display = 'none'; listenFirebase(); }
+
+    function listenFirebase() {
+        db.ref('images').on('value', s => { cloudData = s.val() || {}; populateFolderFilter(); filterData(); updateStats(); });
+        db.ref('trash').on('value', s => { trashData = s.val() || {}; renderTrash(); updateStats(); });
+        db.ref('shared_links').on('value', s => { sharedLinksData = s.val() || {}; renderLinksManager(); updateStats(); });
+        db.ref('galleries').on('value', s => { galleriesData = s.val() || {}; renderLinksManager(); updateStats(); });
+        db.ref('notifications').on('value', s => { notificationsData = s.val() || {}; renderNotifications(); });
+    }
+    
+    function populateFolderFilter() {
+        const folders = new Set();
+        Object.values(cloudData).forEach(item => { if(item.folder) folders.add(item.folder); });
+        const select = document.getElementById('folderFilter'); const currentVal = select.value;
+        select.innerHTML = '<option value="">📁 Tất cả Dự án</option>';
+        folders.forEach(f => { select.innerHTML += `<option value="${f}">${f}</option>`; });
+        select.value = currentVal;
+    }
+
+    window.switchTab = (tid, btn) => {
+        currentTab = tid;
+        document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none'); document.getElementById('tab-' + tid).style.display = 'block';
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); btn.classList.add('active');
+    };
+
+    function formatSize(bytes) { if (!bytes) return "0 KB"; const k = 1024; if (bytes < k * k) return (bytes / k).toFixed(1) + " KB"; return (bytes / (k * k)).toFixed(2) + " MB"; }
+
+    let isBatchMode = false;
+    window.toggleBatchSelect = () => {
+        isBatchMode = !isBatchMode;
+        document.querySelectorAll('.img-checkbox').forEach(c => { c.style.display = isBatchMode ? 'block' : 'none'; c.checked = false; });
+        document.getElementById('batchWmBtn').style.display = isBatchMode ? 'inline-block' : 'none'; document.getElementById('batchGalleryBtn').style.display = isBatchMode ? 'inline-block' : 'none';
+    };
+
+    function renderItem(item, containerId, fbKey, isTrash = false) {
+        const div = document.createElement('div'); div.className = 'media-card';
+        const isImg = item.isImage !== false;
+        const resText = (item.width && item.height) ? `${item.width} x ${item.height}` : (isImg ? "N/A" : "TỆP TIN");
+        const sizeText = formatSize(item.size); const safeName = String(item.name || "Không có tên").replace(/'/g, "\\'"); 
+        
+        let tagsHtml = ''; let tagsArr = [];
+        if (item.tags) tagsArr = item.tags; else if (item.album) tagsArr = [item.album];
+        if (tagsArr.length > 0) tagsHtml += tagsArr.map(t => `<div class="tag-badge">#${t}</div>`).join('');
+        if (item.folder) tagsHtml += `<div class="folder-badge">📁 ${item.folder}</div>`;
+        const tagContainer = tagsHtml ? `<div class="tag-container">${tagsHtml}</div>` : '';
+
+        const ext = String(item.name || "").split('.').pop().toLowerCase();
+        const isMedia = ['mp4', 'webm', 'ogg', 'mov', 'mp3', 'wav', 'flac', 'm4a'].includes(ext);
+        const clickAction = (isImg || isMedia) ? `openLightbox('${item.url}', '${safeName}', '${resText}', '${sizeText}', ${item.width || 0}, ${item.height || 0}, null, '${ext}')` : `window.open('${item.url}', '_blank')`;
+
+        div.innerHTML = `
+            ${tagContainer}
+            <input type="checkbox" class="img-checkbox" value="${fbKey}" style="display: ${isBatchMode && !isTrash ? 'block' : 'none'}">
+            <div class="preview-box" onclick="if(!isBatchMode) ${clickAction}">
+                <img src="${item.thumb || item.url}" loading="lazy" style="${!isImg ? 'object-fit: contain; padding: 30px;' : 'object-fit: cover;'}">
+            </div>
+            <div style="padding:10px 12px 5px; font-size:11px; font-weight:700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" title="${item.name}">${item.name || "Không có tên"}</div>
+            <div class="img-meta"><span>📏 ${resText}</span><span>💾 ${sizeText}</span></div>
+            <div class="action-row">
+                ${isTrash ? 
+                    `<button class="btn" style="background:var(--success); flex:1" onclick="restoreImg('${fbKey}')">♻️ Khôi Phục</button><button class="btn" style="background:var(--danger); flex:1" onclick="deletePerm('${fbKey}')">🗑️ Xóa Bỏ</button>` :
+                    `<button class="btn" style="background:var(--warning); width: 48%;" onclick="openExpiryModal('${item.url}', '${safeName}', ${isImg}, '${item.thumb || ''}')">Share</button>
+                     <button class="btn" style="background:var(--success); width: 48%;" onclick="forceDownload('${item.url}', '${safeName}')">Tải Về</button>
+                     <button class="btn" style="background:#3b82f6; width: 48%;" onclick="triggerUpdate('${fbKey}')">🔄 Thay Tệp</button>
+                     <button class="btn" style="background:var(--danger); width: 48%;" onclick="moveToTrash('${fbKey}')">🗑 Xóa</button>`
+                }
+            </div>`;
+        document.getElementById(containerId).appendChild(div);
+    }
+
+    // ==========================================
+    // FIX BUG LOGIC "THAY TỆP" (REPLACE FILE)
+    // ==========================================
+    let updateFileKey = null; 
+    window.triggerUpdate = (key) => { updateFileKey = key; document.getElementById('updateFileInput').click(); };
+
+    document.getElementById('updateFileInput').onchange = async (e) => {
+        const file = e.target.files[0]; if(!file || !updateFileKey) return; 
+        showToast("🚀 Đang đồng bộ hóa tệp mới...");
+        
+        const isImage = file.type.startsWith('image/'); const newName = file.name; 
+        let directUrl = ""; let imgWidth = 0, imgHeight = 0;
+        const fileIcon = 'https://cdn-icons-png.flaticon.com/512/2916/2916922.png'; 
+        const ext = newName.includes('.') ? newName.split('.').pop().toLowerCase() : 'file'; 
+        
+        // 1. Lấy thông tin tệp cũ để bảo toàn cấu trúc Tags và Folder
+        const existingItem = cloudData[updateFileKey] || {};
+        let mergedTags = existingItem.tags || [];
+        if(!mergedTags.includes(ext)) mergedTags.push(ext); // Bổ sung tag đuôi file mới nếu chưa có
+
+        try {
+            // Upload File
+            if (isImage) {
+                const fd = new FormData(); fd.append('image', file);
+                const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, { method: 'POST', body: fd });
+                const json = await res.json(); 
+                if (json.success) { directUrl = json.data.url; imgWidth = json.data.width; imgHeight = json.data.height; } 
+                else throw new Error("ImgBB reject");
+            } else {
+                const serverRes = await fetch('https://api.gofile.io/servers'); 
+                const serverData = await serverRes.json();
+                if (serverData.status === 'ok' && serverData.data.servers.length > 0) {
+                    const serverName = serverData.data.servers[0].name; 
+                    const fd = new FormData(); fd.append('file', file);
+                    const uploadRes = await fetch(`https://${serverName}.gofile.io/uploadFile`, { method: 'POST', body: fd });
+                    const uploadData = await uploadRes.json(); 
+                    if (uploadData.status === 'ok') directUrl = uploadData.data.downloadPage; 
+                    else throw new Error("GoFile reject");
+                }
+            }
+
+            if (directUrl) {
+                // Tạo data update, sử dụng cấu trúc Tags đã gộp
+                const newData = { 
+                    name: newName, url: directUrl, thumb: isImage ? directUrl : fileIcon, 
+                    size: file.size, isImage: isImage, width: imgWidth, height: imgHeight, 
+                    tags: mergedTags, updatedAt: Date.now(), originalKey: updateFileKey 
+                };
+                
+                // Cập nhật lên node chính
+                await db.ref('images/' + updateFileKey).update(newData);
+
+                // Quét qua các Landing Page để update
+                const galleriesSnapshot = await db.ref('galleries').once('value'); 
+                const allGalleries = galleriesSnapshot.val() || {};
+                
+                for (let galId in allGalleries) {
+                    let rawImages = allGalleries[galId].images;
+                    if (!rawImages) continue;
+                    
+                    // FIX BUG Firebase: Chuyển Object thành Array nếu Firebase vô tình lưu thành JSON key-value
+                    let galImages = Array.isArray(rawImages) ? rawImages : Object.values(rawImages);
+                    let updated = false;
+                    
+                    galImages = galImages.map(img => { 
+                        if (img && img.originalKey === updateFileKey) { 
+                            updated = true; 
+                            return { ...img, ...newData, isEdited: true, status: 'pending' }; 
+                        } 
+                        return img; 
+                    });
+                    
+                    if (updated) {
+                        await db.ref(`galleries/${galId}/images`).set(galImages);
+                    }
+                }
+                showToast("✅ Đã cập nhật tệp mới trên toàn hệ thống!");
+            }
+        } catch (err) { 
+            console.error(err);
+            showToast("❌ Lỗi đồng bộ! Có thể do API lưu trữ."); 
+        }
+        document.getElementById('updateFileInput').value = ""; // Xóa bộ nhớ input
+    };
+    // ==========================================
+
+    window.filterData = () => {
+        const term = (document.getElementById('searchBox').value || "").toLowerCase(); const sortMode = document.getElementById('sortBox').value; const folderTerm = document.getElementById('folderFilter').value;
+        let keys = Object.keys(cloudData).filter(k => {
+            const item = cloudData[k]; if (!item) return false; 
+            const nameMatch = String(item.name || "").toLowerCase().includes(term);
+            const tagsMatch = Array.isArray(item.tags) ? item.tags.some(t => String(t).toLowerCase().includes(term)) : false;
+            const textMatch = nameMatch || tagsMatch || String(item.folder || "").toLowerCase().includes(term);
+            const folderMatch = folderTerm === "" || item.folder === folderTerm; return textMatch && folderMatch;
+        });
+
+        keys.sort((a, b) => {
+            const itemA = cloudData[a], itemB = cloudData[b];
+            if (sortMode === 'newest') return b.localeCompare(a); 
+            if (sortMode === 'oldest') return a.localeCompare(b);
+            if (sortMode === 'size_desc') return (itemB.size || 0) - (itemA.size || 0);
+            if (sortMode === 'size_asc') return (itemA.size || 0) - (itemB.size || 0); return 0;
+        });
+
+        sortedKeys = keys; currentFilteredKeys = keys; document.getElementById('historyList').innerHTML = ''; renderIndex = 0; 
+        document.getElementById('deleteFilterBtn').innerText = `🗑️ Xóa Lọc (${keys.length})`; loadMoreItems();
+    };
+
+    function loadMoreItems() {
+        const end = Math.min(renderIndex + BATCH_SIZE, sortedKeys.length);
+        for (let i = renderIndex; i < end; i++) renderItem(cloudData[sortedKeys[i]], 'historyList', sortedKeys[i]);
+        renderIndex = end; document.getElementById('loadMoreTrigger').style.display = (renderIndex >= sortedKeys.length || sortedKeys.length === 0) ? 'none' : 'block';
+    }
+
+    const observer = new IntersectionObserver((entries) => { if(entries[0].isIntersecting && currentTab === 'library') loadMoreItems(); }, { rootMargin: '100px' });
+    observer.observe(document.getElementById('loadMoreTrigger'));
+
+    // --- PIN-POINT GUEST ANNOTATION LÊN MODAL ---
+    let isPinMode = false; let currentGalIndex = null;
+    let pendingPinX = 0; let pendingPinY = 0;
+
+    window.togglePinMode = () => {
+        if(!galKey) return showToast("Tính năng này chỉ dành cho Link Gửi Khách (Landing Page)!");
+        isPinMode = !isPinMode;
+        document.getElementById('btnPinMode').style.border = isPinMode ? "2px solid white" : "none";
+        document.getElementById('annotationLayer').style.display = isPinMode ? "block" : "none";
+        document.getElementById('lbHintText').innerText = isPinMode ? "📍 Nhấp vào điểm lỗi trên ảnh để ghim Comment" : "🎨 Nhấp vào bất kỳ điểm nào trên ảnh để lấy mã màu (Color Picker)";
+    };
+
+    window.openLightbox = (url, name, res, size, width, height, index, ext) => {
+        const img = document.getElementById('lbImg');
+        const vid = document.getElementById('lbVideo');
+        const audContainer = document.getElementById('lbAudioContainer');
+        const aud = document.getElementById('lbAudio');
+        const controls = document.getElementById('lbControls');
+        const palette = document.getElementById('colorPalette');
+        
+        // Reset trạng thái
+        img.style.display = 'none'; vid.style.display = 'none'; audContainer.style.display = 'none';
+        img.src = ''; vid.src = ''; aud.src = '';
+        document.getElementById('ratioBox').style.display = 'none';
+        document.getElementById('safeZoneOverlay').style.display = 'none';
+        document.getElementById('ledGridOverlay').style.display = 'none';
+        palette.innerHTML = '';
+        currentGalIndex = index;
+
+        const isVideo = ['mp4', 'webm', 'ogg', 'mov'].includes((ext || "").toLowerCase());
+        const isAudio = ['mp3', 'wav', 'flac', 'm4a'].includes((ext || "").toLowerCase());
+
+        if (isVideo) {
+            vid.src = url; vid.style.display = 'block'; vid.play().catch(e=>{});
+            controls.style.display = 'none'; // Ẩn các nút cắt khung khi xem video
+            document.getElementById('lbInfo').innerHTML = `<b>${name}</b><br>Định dạng Video | Dung lượng: ${size}`;
+        } else if (isAudio) {
+            aud.src = url; audContainer.style.display = 'block'; aud.play().catch(e=>{});
+            document.getElementById('lbAudioName').innerText = name;
+            controls.style.display = 'none';
+            document.getElementById('lbInfo').innerHTML = `<b>${name}</b><br>Định dạng Âm thanh | Dung lượng: ${size}`;
+        } else {
+            img.src = url; img.style.display = 'block';
+            controls.style.display = 'flex'; // Hiển thị lại nút cắt khung cho ảnh
+            const renderPrintInfo = (w, h) => {
+                const w300 = (w / 300 * 2.54).toFixed(1); const h300 = (h / 300 * 2.54).toFixed(1);
+                const w72 = (w / 72 * 2.54).toFixed(1); const h72 = (h / 72 * 2.54).toFixed(1);
+                const printInfo = `<br><span style="color:#f59e0b; font-size:12px;">🖨️ Kích thước in đề xuất: Offset (300dpi): ${w300}x${h300}cm | Bạt (72dpi): ${w72}x${h72}cm</span>`;
+                const finalRes = (res === "N/A" || !res) ? `${w} x ${h}` : res;
+                document.getElementById('lbInfo').innerHTML = `<b>${name}</b><br>Độ phân giải: ${finalRes} | Dung lượng: ${size} ${printInfo}`;
+            };
+            if (width && height) renderPrintInfo(width, height);
+            else {
+                document.getElementById('lbInfo').innerHTML = `<b>${name}</b><br>Độ phân giải: Đang tải... | Dung lượng: ${size}`;
+                const tempImg = new Image(); tempImg.onload = function() { renderPrintInfo(this.naturalWidth, this.naturalHeight); }; tempImg.src = url;
+            }
+        }
+        
+        // Render Pin-points (giữ nguyên logic cũ)
+        const layer = document.getElementById('annotationLayer'); layer.innerHTML = '';
+        if(galKey && index !== null && index !== undefined && !isVideo && !isAudio) {
+            db.ref(`galleries/${galKey}/images/${index}/annotations`).once('value', s => {
+                const anns = s.val() || {};
+                Object.values(anns).forEach(ann => {
+                    layer.innerHTML += `<div class="pin-point" style="left:${ann.x}%; top:${ann.y}%;" data-comment="${ann.guest}: ${ann.text}"></div>`;
+                });
+            });
+        }
+        document.getElementById('lightbox').style.display = 'flex';
+    };
+
+    window.closeLightbox = () => { 
+        document.getElementById('lightbox').style.display = 'none'; 
+        document.getElementById('lbImg').src = ''; 
+        
+        // Dừng Video/Audio khi đóng
+        const vid = document.getElementById('lbVideo'); vid.pause(); vid.src = '';
+        const aud = document.getElementById('lbAudio'); aud.pause(); aud.src = '';
+
+        document.getElementById('ratioBox').style.display = 'none'; 
+        document.getElementById('colorPalette').innerHTML = ''; 
+        document.getElementById('safeZoneOverlay').style.display = 'none';
+        document.getElementById('ledGridOverlay').style.display = 'none';
+    };
+
+    window.toggleSafeZone = () => {
+        const el = document.getElementById('safeZoneOverlay');
+        el.style.display = el.style.display === 'block' ? 'none' : 'block';
+    };
+
+    window.toggleLedGrid = () => {
+        const el = document.getElementById('ledGridOverlay');
+        el.style.display = el.style.display === 'block' ? 'none' : 'block';
+    };
+
+    window.previewRatio = (w, h) => {
+        const rb = document.getElementById('ratioBox'); if(w === 0) { rb.style.display = 'none'; return; }
+        const img = document.getElementById('lbImg'); const imgRatio = img.clientWidth / img.clientHeight; const targetRatio = w / h; rb.style.display = 'block';
+        if(targetRatio > imgRatio) { rb.style.width = '100%'; rb.style.height = (img.clientWidth / targetRatio) + 'px'; } else { rb.style.height = '100%'; rb.style.width = (img.clientHeight * targetRatio) + 'px'; }
+    };
+
+    document.getElementById('lbImg').addEventListener('click', function(e) {
+        if(isPinMode && galKey && currentGalIndex !== null && currentGalIndex !== undefined) {
+            const rect = this.getBoundingClientRect();
+            pendingPinX = ((e.clientX - rect.left) / rect.width) * 100;
+            pendingPinY = ((e.clientY - rect.top) / rect.height) * 100;
+            
+            document.getElementById('pinGuestName').value = "";
+            document.getElementById('pinCommentInput').value = "";
+            document.getElementById('pinModal').style.display = 'flex';
+            setTimeout(() => document.getElementById('pinCommentInput').focus(), 100);
+            return;
+        }
+
+        try {
+            const canvas = document.createElement('canvas'); const ctx = canvas.getContext('2d'); const rect = this.getBoundingClientRect();
+            const scaleX = this.naturalWidth / rect.width; const scaleY = this.naturalHeight / rect.height;
+            const x = (e.clientX - rect.left) * scaleX; const y = (e.clientY - rect.top) * scaleY;
+            canvas.width = 1; canvas.height = 1; ctx.drawImage(this, x, y, 1, 1, 0, 0, 1, 1);
+            const data = ctx.getImageData(0, 0, 1, 1).data;
+            const hex = "#" + ((1 << 24) + (data[0] << 16) + (data[1] << 8) + data[2]).toString(16).slice(1).toUpperCase();
+            navigator.clipboard.writeText(hex); showToast(`🎨 Đã copy mã màu: ${hex}`);
+        } catch (err) {}
+    });
+
+    window.closePinModal = () => { document.getElementById('pinModal').style.display = 'none'; };
+
+    window.submitPinComment = () => {
+        const guest = document.getElementById('pinGuestName').value.trim() || "Khách";
+        const comment = document.getElementById('pinCommentInput').value.trim();
+        
+        if(!comment) {
+            const input = document.getElementById('pinCommentInput');
+            input.style.border = "1px solid var(--danger)"; setTimeout(() => input.style.border = "1px solid var(--border)", 500); input.focus(); return;
+        }
+
+        const btn = document.getElementById('submitPinBtn'); const originalText = btn.innerHTML; btn.innerHTML = "⏳ Đang ghim...";
+
+        db.ref(`galleries/${galKey}/images/${currentGalIndex}/annotations`).push({ 
+            x: pendingPinX, y: pendingPinY, text: comment, guest: guest 
+        }).then(() => {
+            document.getElementById('annotationLayer').innerHTML += `<div class="pin-point" style="left:${pendingPinX}%; top:${pendingPinY}%;" data-comment="${guest}: ${comment}"></div>`;
+            pushWebhook("📍 Khách Ghim Comment", `Dự án: ${document.getElementById('galTitle').innerText}\nFile: ${document.getElementById('lbInfo').innerText.split('<br>')[0]}\nKhách: ${guest}\nYêu cầu: ${comment}`);
+            logActivity('comment', galKey, document.getElementById('galTitle').innerText, document.getElementById('lbInfo').innerText.split('<br>')[0], `📍 Ghim điểm: ${comment}`, guest);
+            showToast("Đã ghim yêu cầu sửa thành công!"); btn.innerHTML = originalText; closePinModal();
+        }).catch(err => { showToast("Lỗi kết nối máy chủ!"); btn.innerHTML = originalText; });
+    };
+
+    let slideIndex = 0; let slideKeys = [];
+    window.startSlideshow = () => {
+        slideKeys = currentFilteredKeys.filter(k => cloudData[k].isImage !== false);
+        if(slideKeys.length === 0) return showToast("Không có ảnh để phát slide!");
+        slideIndex = 0; document.getElementById('slideshow').style.display = 'flex'; showSlide();
+    };
+    window.closeSlideshow = () => { document.getElementById('slideshow').style.display = 'none'; document.getElementById('slideImg').src = ''; };
+    window.showSlide = () => { document.getElementById('slideImg').src = cloudData[slideKeys[slideIndex]].url; };
+    window.nextSlide = () => { slideIndex = (slideIndex + 1) % slideKeys.length; showSlide(); };
+    window.prevSlide = () => { slideIndex = (slideIndex - 1 + slideKeys.length) % slideKeys.length; showSlide(); };
+    document.addEventListener('keydown', (e) => { if(document.getElementById('slideshow').style.display === 'flex') { if(e.key === 'ArrowRight') nextSlide(); if(e.key === 'ArrowLeft') prevSlide(); if(e.key === 'Escape') closeSlideshow(); } });
+
+    window.deleteFiltered = async () => {
+        if (currentFilteredKeys.length === 0) return showToast("Không có tệp để xóa!");
+        customConfirm(`Chuyển ${currentFilteredKeys.length} tệp này vào thùng rác?`, async () => {
+            const updates = {};
+            currentFilteredKeys.forEach(k => { const trashRef = db.ref('trash').push(); updates[`/trash/${trashRef.key}`] = cloudData[k]; updates[`/images/${k}`] = null; });
+            await db.ref().update(updates); showToast("Đã dọn dẹp kết quả lọc!");
+        });
+    };
+
+    const globalOverlay = document.getElementById('globalDropOverlay'); let dragCounter = 0;
+    ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => { window.addEventListener(eventName, preventDefaults, false); });
+    function preventDefaults(e) { e.preventDefault(); e.stopPropagation(); }
+    window.addEventListener('dragenter', (e) => { if (e.dataTransfer.types.includes("Files")) { dragCounter++; globalOverlay.style.display = 'flex'; } });
+    window.addEventListener('dragleave', (e) => { dragCounter--; if (dragCounter === 0) globalOverlay.style.display = 'none'; });
+    
+    window.addEventListener('drop', (e) => { dragCounter = 0; globalOverlay.style.display = 'none'; const files = Array.from(e.dataTransfer.files); if (files.length > 0) { switchTab('upload', document.querySelectorAll('.tab-btn')[1]); uploadFiles(files); } });
+    function handlePaste(e) { if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return; const items = (e.clipboardData || e.originalEvent.clipboardData).items; let files = []; for (let item of items) { if (item.kind === 'file') files.push(item.getAsFile()); } if(files.length > 0) { if(currentTab !== 'upload') switchTab('upload', document.querySelectorAll('.tab-btn')[1]); uploadFiles(files); } }
+    
+    document.getElementById('fileInput').onchange = (e) => uploadFiles(Array.from(e.target.files));
+
+    async function uploadFiles(files) {
+        const rawTags = document.getElementById('uploadTags').value; const baseTagsArray = rawTags ? rawTags.split(',').map(t => t.trim().toLowerCase()).filter(t => t) : [];
+        const folderName = document.getElementById('uploadFolder').value.trim() || "Uncategorized";
+        const progressArea = document.getElementById('progressArea'); const fill = document.getElementById('barFill'); progressArea.style.display = 'block';
+
+        for (let i = 0; i < files.length; i++) {
+            let file = files[i]; const isImage = file.type.startsWith('image/'); const currentName = file.name || `File_${Date.now()}`;
+            
+            let fileTags = [...baseTagsArray];
+            if (currentName.includes('.')) { const ext = currentName.split('.').pop().toLowerCase(); if (!fileTags.includes(ext)) { fileTags.push(ext); } }
+
+            // PHÁT HIỆN HỆ MÀU CMYK VÀ TIFF 
+            if (isImage) {
+                try {
+                    const exif = await exifr.parse(file, {tiff: true});
+                    if((exif && exif.ColorSpace === 65535) || file.type === 'image/tiff' || currentName.toLowerCase().includes('cmyk')) {
+                        showToast(`⚠️ Cảnh báo: File ${currentName} đang ở hệ màu CMYK/TIFF, xem trên web có thể sai lệch màu in ấn!`);
+                    }
+                } catch(err) {}
+            }
+
+            document.getElementById('progressStatus').innerText = `Đang gửi ${isImage ? 'Ảnh' : 'Tệp'}...`;
+            document.getElementById('currentFileName').innerText = "Đang Upload: " + currentName; document.getElementById('fileCounter').innerText = `${i+1}/${files.length}`;
+
+            try {
+                let directUrl = ""; let imgWidth = 0; let imgHeight = 0; const fileIcon = 'https://cdn-icons-png.flaticon.com/512/2916/2916922.png';
+
+                if (isImage) {
+                    const fd = new FormData(); fd.append('image', file);
+                    const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_KEY}`, { method: 'POST', body: fd });
+                    const json = await res.json(); if (json.success) { directUrl = json.data.url; imgWidth = json.data.width; imgHeight = json.data.height; } else { throw new Error("ImgBB reject"); }
+                } else {
+                    document.getElementById('progressStatus').innerText = "Đang xin cấp Server GoFile...";
+                    const serverRes = await fetch('https://api.gofile.io/servers', { method: 'GET' }); const serverData = await serverRes.json();
+                    
+                    if (serverData.status === 'ok' && serverData.data.servers.length > 0) {
+                        const serverName = serverData.data.servers[0].name; document.getElementById('progressStatus').innerText = `Đang tải Tệp lên ${serverName.toUpperCase()}...`;
+                        const fd = new FormData(); fd.append('file', file);
+                        const uploadRes = await fetch(`https://${serverName}.gofile.io/uploadFile`, { method: 'POST', body: fd });
+                        const uploadData = await uploadRes.json(); if (uploadData.status === 'ok') { directUrl = uploadData.data.downloadPage; } else { throw new Error("GoFile reject"); }
+                    } else { throw new Error("No GoFile Server"); }
+                }
+
+                if (directUrl) {
+                    await db.ref('images').push({ url: directUrl, thumb: isImage ? directUrl : fileIcon, name: currentName, size: file.size, tags: fileTags, folder: folderName, isImage: isImage, width: imgWidth, height: imgHeight });
+                }
+            } catch (e) { showToast(`Lỗi khi tải: ${currentName}`); }
+            
+            const p = Math.round(((i + 1) / files.length) * 100); fill.style.width = p + '%'; document.getElementById('progressPercent').innerText = p + '%';
+        }
+        
+        setTimeout(() => { progressArea.style.display = 'none'; showToast("Đã xử lý xong toàn bộ!"); document.getElementById('tabLibraryBtn').click(); }, 1500); 
+    }
+
+    window.moveToTrash = (k) => { db.ref('trash').push(cloudData[k]); db.ref('images/' + k).remove(); showToast("Đã chuyển vào thùng rác."); };
+    window.restoreImg = (k) => { db.ref('images').push(trashData[k]); db.ref('trash/' + k).remove(); showToast("Đã khôi phục tệp."); };
+    window.deletePerm = (k) => { customConfirm("Xóa vĩnh viễn tệp này?", () => { db.ref('trash/' + k).remove(); showToast("Đã xóa vĩnh viễn tệp."); }); };
+    window.restoreAll = () => { Object.keys(trashData).forEach(k => { db.ref('images').push(trashData[k]); db.ref('trash/' + k).remove(); }); showToast("Đã khôi phục toàn bộ."); };
+    window.emptyTrash = () => { if(Object.keys(trashData).length === 0) return showToast("Thùng rác trống!"); customConfirm("Dọn sạch thùng rác?", () => { db.ref('trash').remove(); showToast("Đã dọn sạch thùng rác."); }); };
+    window.renderTrash = () => { const l = document.getElementById('trashList'); l.innerHTML = ''; Object.keys(trashData).sort((a,b) => b.localeCompare(a)).forEach(k => renderItem(trashData[k], 'trashList', k, true)); };
+
+    function updateStats() {
+        const keys = Object.keys(cloudData); const size = keys.reduce((a, k) => a + (cloudData[k].size || 0), 0);
+        document.getElementById('statCount').innerText = keys.length; document.getElementById('statSize').innerText = formatSize(size); document.getElementById('statTrash').innerText = Object.keys(trashData).length;
+        let totalViews = 0; Object.values(sharedLinksData).forEach(d => totalViews += (d.views || 0)); Object.values(galleriesData).forEach(d => totalViews += (d.views || 0)); document.getElementById('statViews').innerText = totalViews;
+    }
+    
+    window.renderLinksManager = () => {
+        const sList = document.getElementById('singleLinksList'); const gList = document.getElementById('galleryLinksList');
+        sList.innerHTML = ''; gList.innerHTML = '';
+        
+        Object.keys(galleriesData).forEach(k => {
+            const d = galleriesData[k]; const url = window.location.origin + window.location.pathname + '?gallery=' + k;
+            gList.innerHTML += `
+                <div class="link-item">
+                    <div>
+                        <strong style="color:var(--primary); font-size: 16px;">${d.title}</strong><br>
+                        <span style="font-size:12px; color:var(--text-muted)">👁️ ${d.views || 0} views • 📦 ${d.images ? d.images.length : 0} file</span><br>
+                        <a href="${url}" target="_blank" style="font-size:11px; color:var(--success); text-decoration:none;">${url}</a>
+                    </div>
+                    <div style="display:flex; gap:5px;">
+                        <button class="btn" style="background:var(--primary); padding: 5px 10px;" onclick="openEditLink('gallery', '${k}')">✏️ Sửa</button>
+                        <button class="btn" style="background:var(--warning); padding: 5px 10px;" onclick="navigator.clipboard.writeText('${url}'); showToast('Đã copy!')">📋 Copy</button>
+                        <button class="btn" style="background:var(--danger); padding: 5px 10px;" onclick="customConfirm('Xóa dự án này?', () => { db.ref('galleries/${k}').remove(); })">🗑️</button>
+                    </div>
+                </div>`;
+        });
+
+        Object.keys(sharedLinksData).forEach(k => {
+            const d = sharedLinksData[k]; const isExpired = Date.now() > d.expires; const status = isExpired ? '<span style="color:var(--danger)">🔴 Hết hạn</span>' : '<span style="color:var(--success)">🟢 Hoạt động</span>'; const url = window.location.origin + window.location.pathname + '?dl=' + k;
+            sList.innerHTML += `
+                <div class="link-item">
+                    <div>
+                        <strong style="max-width: 150px; display: inline-block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${d.name}</strong> ${status}<br>
+                        <span style="font-size:11px; color:var(--text-muted)">👁️ ${d.views || 0} views • ⏰ ${new Date(d.expires).toLocaleString('vi-VN')}</span>
+                    </div>
+                    <div style="display:flex; gap:5px;">
+                        <button class="btn" style="background:var(--primary); padding: 5px 10px;" onclick="openEditLink('single', '${k}')">⏳ Sửa & Gia hạn</button>
+                        <button class="btn" style="background:var(--warning); padding: 5px 10px;" onclick="navigator.clipboard.writeText('${url}'); showToast('Đã copy!')">📋 Copy</button>
+                        <button class="btn" style="background:var(--danger); padding: 5px 10px;" onclick="customConfirm('Gỡ link này?', () => { db.ref('shared_links/${k}').remove(); })">🗑️</button>
+                    </div>
+                </div>`;
+        });
+        
+        if(Object.keys(galleriesData).length === 0) gList.innerHTML = "<p style='color:var(--text-muted); font-size:14px;'>Chưa có Landing Page nào.</p>";
+        if(Object.keys(sharedLinksData).length === 0) sList.innerHTML = "<p style='color:var(--text-muted); font-size:14px;'>Chưa có Link Tự Hủy nào.</p>";
+    };
+
+    window.batchRename = async () => {
+        const newBase = document.getElementById('batchNameInput').value.trim(); if (!newBase || currentFilteredKeys.length === 0) return; const updates = {};
+        currentFilteredKeys.forEach((k, i) => { const ext = cloudData[k].name.split('.').pop() || ''; updates[`/images/${k}/name`] = `${newBase}-${i+1}${ext?'.'+ext:''}`; });
+        await db.ref().update(updates); showToast("Đã đổi tên hàng loạt!");
+    };
+    
+    window.openGalleryModal = () => {
+        const selected = Array.from(document.querySelectorAll('.img-checkbox:checked'));
+        if(selected.length === 0) return showToast("Vui lòng tick chọn các tệp cần gửi khách!");
+        document.getElementById('galleryName').value = ""; document.getElementById('galleryModal').style.display = 'flex';
+    };
+    
+    window.closeGalleryModal = () => document.getElementById('galleryModal').style.display = 'none';
+
+    document.getElementById('confirmGalleryBtn').onclick = async () => {
+        const title = document.getElementById('galleryName').value.trim() || "Dự Án Thiết Kế";
+        const slug = document.getElementById('gallerySlug').value.trim().toLowerCase().replace(/\s+/g, '-');
+        const selectedCheckboxes = Array.from(document.querySelectorAll('.img-checkbox:checked'));
+        if (selectedCheckboxes.length === 0) return showToast("Vui lòng tick chọn các tệp cần gửi khách!");
+
+        const images = selectedCheckboxes.map(c => { const key = c.value; return { ...cloudData[key], originalKey: key }; });
+        const dataToSave = { title: title, created: Date.now(), images: images, views: 0 };
+        let finalKey = "";
+
+        try {
+            if (slug !== "") {
+                const snapshot = await db.ref('galleries/' + slug).once('value');
+                if (snapshot.exists()) { showToast(`❌ Link "${slug}" đã tồn tại! Vui lòng chọn tên khác.`); document.getElementById('gallerySlug').style.border = "1px solid var(--danger)"; document.getElementById('gallerySlug').focus(); return; }
+                finalKey = slug; await db.ref('galleries/' + finalKey).set(dataToSave);
+            } else {
+                const newRef = db.ref('galleries').push(); finalKey = newRef.key; await newRef.set(dataToSave);
+            }
+
+            const galleryUrl = window.location.origin + window.location.pathname + '?gallery=' + finalKey;
+            navigator.clipboard.writeText(galleryUrl).then(() => {
+                showToast("🚀 Đã tạo link tùy chỉnh và copy thành công!"); closeGalleryModal();
+                document.getElementById('gallerySlug').value = ""; document.getElementById('gallerySlug').style.border = "1px solid var(--border)";
+                if(isBatchMode) toggleBatchSelect(); 
+            }).catch(err => { showToast("Đã lưu nhưng trình duyệt chặn copy tự động!"); console.log("Link: ", galleryUrl); });
+        } catch (error) { showToast("❌ Có lỗi xảy ra khi kết nối máy chủ!"); }
+    };
+
+    let isBatchAction = false;
+    window.openExpiryModal = (url, name, isImage = true, thumb = '') => { 
+        isBatchAction = false; currentImg = { url, name, isImage, thumb }; document.getElementById('modalTitle').innerText = "🔗 Tạo Link Chia Sẻ"; document.getElementById('modalSubtitle').innerText = "Link sẽ tự hủy để bảo mật file.";
+        document.getElementById('expiryTimeGroup').style.display = 'block'; document.getElementById('singleShareBtns').style.display = 'flex'; document.getElementById('batchShareBtns').style.display = 'none';
+        document.getElementById('watermarkCheck').checked = false; const savedWmText = localStorage.getItem('saved_wm_text'); document.getElementById('wmTextInput').value = savedWmText !== null ? savedWmText : "DEMO - NGUYỄN TUẤN";
+        toggleWmOptions(); document.getElementById('expiryModal').style.display = 'flex'; 
+    };
+
+    window.openBatchModal = () => {
+        const selected = Array.from(document.querySelectorAll('.img-checkbox:checked')); if(selected.length === 0) return showToast("Vui lòng tick chọn các ảnh cần xử lý!");
+        isBatchAction = true; document.getElementById('modalTitle').innerText = "🛡️ Nén ZIP Hàng Loạt"; document.getElementById('modalSubtitle').innerText = `Sẽ tự động chia thư mục In Ấn & Đăng Web. Có thể đóng dấu hàng loạt.`;
+        document.getElementById('expiryTimeGroup').style.display = 'none'; document.getElementById('singleShareBtns').style.display = 'none'; document.getElementById('batchShareBtns').style.display = 'flex';
+        document.getElementById('watermarkCheck').checked = false; const savedWmText = localStorage.getItem('saved_wm_text'); document.getElementById('wmTextInput').value = savedWmText !== null ? savedWmText : "DEMO - NGUYỄN TUẤN";
+        toggleWmOptions(); document.getElementById('expiryModal').style.display = 'flex'; 
+    };
+    
+    window.closeModal = () => document.getElementById('expiryModal').style.display = 'none';
+    
+    document.getElementById('confirmShareBtn').onclick = async () => {
+        const slug = document.getElementById('shareSlug').value.trim().replace(/\s+/g, '-').toLowerCase(); const m = document.getElementById('customMins').value; const isWm = document.getElementById('watermarkCheck').checked; const wmTextVal = document.getElementById('wmTextInput').value.trim();
+        const dataToSave = { ...currentImg, expires: Date.now() + m * 60000, wm: isWm, wmText: isWm ? wmTextVal : "", logoUrl: isWm ? currentLogoUrl : "", views: 0 };
+        let finalKey = "";
+        if (slug !== "") { const snapshot = await db.ref('shared_links/' + slug).once('value'); if (snapshot.exists()) { showToast("❌ Link này đã có người dùng!"); return; } finalKey = slug; await db.ref('shared_links/' + finalKey).set(dataToSave); } 
+        else { const newRef = db.ref('shared_links').push(); finalKey = newRef.key; await newRef.set(dataToSave); }
+        const shareUrl = window.location.origin + window.location.pathname + "?dl=" + finalKey; navigator.clipboard.writeText(shareUrl).then(() => { showToast("🔗 Đã tạo link!"); closeModal(); });
+    };
+
+    // --- AUTO-ZIP PHÂN LOẠI THƯ MỤC THÔNG MINH ---
+    document.getElementById('confirmBatchZipBtn').onclick = async () => {
+        const selectedKeys = Array.from(document.querySelectorAll('.img-checkbox:checked')).map(c => c.value);
+        const isWm = document.getElementById('watermarkCheck').checked; const wmTextVal = document.getElementById('wmTextInput').value.trim();
+        localStorage.setItem('saved_wm_text', wmTextVal);
+        
+        showToast("Đang tải & phân loại tệp tự động, vui lòng không tắt trang..."); closeModal();
+        const zip = new JSZip();
+        
+        for(let k of selectedKeys) {
+            const item = cloudData[k];
+            const ext = item.name.includes('.') ? item.name.split('.').pop().toLowerCase() : '';
+            const inAnExts = ['cdr', 'psd', 'ai', 'eps', 'pdf', 'tiff'];
+            const isInAn = inAnExts.includes(ext) || (item.tags && item.tags.some(t => inAnExts.includes(t.toLowerCase())));
+            
+            const targetFolder = isInAn ? zip.folder("File_In_An_Thiet_Ke") : zip.folder("File_Dang_Web_Preview");
+
+            if(!isWm || item.isImage === false || isInAn) { 
+                try { const r = await fetch(item.url); const b = await r.blob(); targetFolder.file(item.name, b); } catch(e){}
+            } else {
+                await new Promise(resolve => {
+                    const img = new Image(); img.crossOrigin = "Anonymous"; img.src = item.url;
+                    img.onload = () => {
+                        const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const ctx = c.getContext('2d'); ctx.drawImage(img, 0, 0);
+                        ctx.save(); ctx.font = `bold ${Math.floor(img.width/12)}px sans-serif`; ctx.fillStyle = "rgba(255, 255, 255, 0.4)"; ctx.textAlign = "center"; ctx.textBaseline = "middle"; ctx.translate(c.width/2, c.height/2); ctx.rotate(-Math.PI/4);
+                        const textToDraw = wmTextVal !== "" ? wmTextVal : "DEMO - NGUYỄN TUẤN"; ctx.fillText(textToDraw, 0, 0); ctx.restore();
+                        
+                        const finalize = () => { c.toBlob(blob => { targetFolder.file("WM_" + item.name, blob); resolve(); }, "image/jpeg", 0.9); };
+                        if(currentLogoUrl) {
+                            const logoImg = new Image(); logoImg.crossOrigin = "Anonymous"; logoImg.src = currentLogoUrl;
+                            logoImg.onload = () => { const maxLogoW = c.width * 0.15; const scale = maxLogoW / logoImg.width; const logoW = logoImg.width * scale; const logoH = logoImg.height * scale; const padding = c.width * 0.02; ctx.drawImage(logoImg, c.width - logoW - padding, c.height - logoH - padding, logoW, logoH); finalize(); };
+                            logoImg.onerror = finalize;
+                        } else finalize();
+                    };
+                    img.onerror = resolve; 
+                });
+            }
+        }
+        
+        showToast("Đang nén file ZIP...");
+        const content = await zip.generateAsync({type:"blob"}); saveAs(content, `Export_TuanNguyen_${Date.now()}.zip`); showToast("Hoàn tất!");
+    };
+    
+    window.logout = () => { sessionStorage.clear(); location.reload(); };
+
+    window.deleteExpiredLinks = () => {
+        const expiredKeys = Object.keys(sharedLinksData).filter(k => Date.now() > sharedLinksData[k].expires);
+        if (expiredKeys.length === 0) return showToast("Không có link nào hết hạn!");
+        customConfirm(`Xóa vĩnh viễn ${expiredKeys.length} link đã hết hạn?`, async () => {
+            const updates = {}; expiredKeys.forEach(k => { updates[`/shared_links/${k}`] = null; }); await db.ref().update(updates); showToast("✅ Đã dọn dẹp link hết hạn!");
+        });
+    };
+
+    window.openEditLink = (type, key) => {
+        const modal = document.getElementById('editLinkModal'); const fields = document.getElementById('editFields'); const saveBtn = document.getElementById('saveEditBtn'); modal.style.display = 'flex';
+        if (type === 'gallery') {
+            const d = galleriesData[key]; document.getElementById('editModalTitle').innerText = "Sửa Thông Tin Landing Page";
+            fields.innerHTML = `
+                <label style="font-size:12px; font-weight:bold;">Tên dự án mới:</label>
+                <input type="text" id="newEditTitle" value="${d.title}" style="width:100%; padding:12px; border-radius:8px; border:1px solid var(--border); margin-top:5px; margin-bottom:10px; background:var(--bg); color:var(--text-main);">
+                <label style="font-size:12px; font-weight:bold;">Link tùy chỉnh mới (Slug):</label>
+                <input type="text" id="newEditSlug" value="${key}" placeholder="VD: du-an-abc" style="width:100%; padding:12px; border-radius:8px; border:1px solid var(--border); margin-top:5px; background:var(--bg); color:var(--text-main);">
+            `;
+            saveBtn.onclick = async () => {
+                const newTitle = document.getElementById('newEditTitle').value.trim(); let newSlug = document.getElementById('newEditSlug').value.trim().toLowerCase().replace(/\s+/g, '-');
+                if (!newTitle) return showToast("Vui lòng nhập tên dự án!"); saveBtn.innerText = "⏳ Đang lưu...";
+                if (newSlug === key || newSlug === "") {
+                    db.ref(`galleries/${key}`).update({ title: newTitle }).then(() => { showToast("✅ Đã đổi tên dự án!"); modal.style.display = 'none'; saveBtn.innerText = "Lưu thay đổi"; });
+                } else {
+                    const snap = await db.ref(`galleries/${newSlug}`).once('value');
+                    if (snap.exists()) { showToast("❌ Link này đã tồn tại!"); saveBtn.innerText = "Lưu thay đổi"; return; }
+                    const newData = { ...d, title: newTitle }; await db.ref(`galleries/${newSlug}`).set(newData); await db.ref(`galleries/${key}`).remove();
+                    showToast("🚀 Đã cập nhật tên và Link dự án!"); modal.style.display = 'none'; saveBtn.innerText = "Lưu thay đổi";
+                }
+            };
+        } else {
+            const d = sharedLinksData[key]; document.getElementById('editModalTitle').innerText = "Sửa & Gia Hạn Link Tự Hủy";
+            fields.innerHTML = `
+                <p style="font-size:11px; color:var(--text-muted); margin-bottom:10px;">File: ${d.name}</p>
+                <label style="font-size:12px; font-weight:bold;">Link tùy chỉnh mới (Slug):</label>
+                <input type="text" id="newEditSlug" value="${key}" style="width:100%; padding:12px; border-radius:8px; border:1px solid var(--border); margin-top:5px; margin-bottom:10px; background:var(--bg); color:var(--text-main);">
+                <label style="font-size:12px; font-weight:bold;">Gia hạn thêm (Phút - Nhập 0 nếu không đổi):</label>
+                <input type="number" id="newEditValue" value="0" style="width:100%; padding:12px; border-radius:8px; border:1px solid var(--border); margin-top:5px; background:var(--bg); color:var(--text-main);">
+            `;
+            saveBtn.onclick = async () => {
+                const extraMins = parseInt(document.getElementById('newEditValue').value) || 0; let newSlug = document.getElementById('newEditSlug').value.trim().toLowerCase().replace(/\s+/g, '-'); saveBtn.innerText = "⏳ Đang lưu...";
+                const baseTime = Math.max(Date.now(), d.expires); const newExpires = extraMins > 0 ? baseTime + (extraMins * 60000) : d.expires;
+
+                if (newSlug === key || newSlug === "") {
+                    if (extraMins > 0) { await db.ref(`shared_links/${key}`).update({ expires: newExpires }); showToast("✅ Đã gia hạn thành công!"); } else { showToast("⚠️ Không có thay đổi nào!"); }
+                    modal.style.display = 'none'; saveBtn.innerText = "Lưu thay đổi";
+                } else {
+                    const snap = await db.ref(`shared_links/${newSlug}`).once('value');
+                    if (snap.exists()) { showToast("❌ Link này đã tồn tại!"); saveBtn.innerText = "Lưu thay đổi"; return; }
+                    const newData = { ...d, expires: newExpires }; await db.ref(`shared_links/${newSlug}`).set(newData); await db.ref(`shared_links/${key}`).remove();
+                    showToast("🚀 Đã cập nhật Link chia sẻ mới!"); modal.style.display = 'none'; saveBtn.innerText = "Lưu thay đổi";
+                }
+            };
+        }
+    };
+
+    // --- HIỂN THỊ ACTIVITY LOG ---
+    window.renderNotifications = () => {
+        const list = document.getElementById('notificationsList'); const badge = document.getElementById('notifBadge'); if(!list) return; 
+        const keys = Object.keys(notificationsData).sort((a, b) => notificationsData[b].time - notificationsData[a].time);
+        list.innerHTML = '';
+        
+        if (keys.length > 0) { if (badge) { badge.style.display = 'inline-block'; badge.innerText = keys.length; } } 
+        else { if (badge) badge.style.display = 'none'; list.innerHTML = "<p style='color:var(--text-muted); font-size:14px; text-align:center; padding: 20px;'>Chưa có hoạt động nào.</p>"; }
+
+        keys.forEach(k => {
+            const d = notificationsData[k]; const timeStr = new Date(d.time).toLocaleString('vi-VN');
+            const isApprove = d.type === 'approve'; const isDownload = d.type === 'download';
+            
+            let icon = '💬'; let color = 'var(--warning)'; let actionHtml = '';
+            
+            if(isApprove) {
+                icon = '✅'; color = 'var(--success)';
+                actionHtml = `khách hàng <span style="color:var(--success); font-weight:bold;">ĐÃ CHỐT FILE</span>`;
+            } else if (isDownload) {
+                icon = '⬇️'; color = '#3b82f6';
+                actionHtml = `<span style="color:#3b82f6; font-weight:bold;">${d.comment}</span>`;
+            } else {
+                actionHtml = `yêu cầu <span style="color:var(--warning); font-weight:bold;">SỬA FILE</span>:<br><i style="color:var(--text-main); display:block; padding:8px; background:var(--bg); border-radius:6px; margin-top:5px; font-size: 13px;">"${d.comment}"</i>`;
+            }
+            
+            const url = window.location.origin + window.location.pathname + '?gallery=' + d.galKey;
+            
+            list.innerHTML += `
+                <div class="link-item" style="border-left: 4px solid ${color}; align-items: flex-start;">
+                    <div style="flex: 1;">
+                        <div style="font-size: 14px; margin-bottom: 8px;">
+                            ${icon} Dự án <b>${d.galTitle}</b>: ${actionHtml} <br><span style="font-size: 12px; color: var(--text-muted);">Bởi: <b>${d.guest || "Khách lạ"}</b></span>
+                        </div>
+                        <div style="font-size: 12px; color: var(--primary); font-weight: 600; margin-bottom: 5px;">📄 ${d.imgName}</div>
+                        <span style="font-size:11px; color:var(--text-muted)">⏰ ${timeStr}</span>
+                    </div>
+                    <div style="display:flex; flex-direction:column; gap:5px; min-width: 100px;">
+                        ${!isDownload ? `<a href="${url}" target="_blank" class="btn" style="background:var(--primary); text-decoration:none; text-align:center;">🔗 Tới Dự Án</a>` : ''}
+                        <button class="btn" style="background:var(--border); color:var(--text-main);" onclick="db.ref('notifications/${k}').remove();">Đã xem (Xóa)</button>
+                    </div>
+                </div>`;
+        });
+    };
+
+    window.clearAllNotifications = () => { if(Object.keys(notificationsData).length === 0) return showToast("Không có thông báo để xóa!"); customConfirm("Xóa sạch lịch sử hoạt động?", () => { db.ref('notifications').remove(); showToast("Đã dọn dẹp!"); }); };
+    
+    // --- HIỂN THỊ TOAST THÔNG BÁO ---
+    window.showToast = function(m) { 
+        const t = document.getElementById('toast'); 
+        t.innerText = m; 
+        t.style.display = 'block'; 
+        t.style.animation = 'none'; 
+        t.offsetHeight; // Kích hoạt lại animation
+        t.style.animation = 'slideUpFade 0.3s forwards'; 
+        setTimeout(() => t.style.display = 'none', 3000); 
+    };
+</script>
+</body>
+</html>
