@@ -395,6 +395,7 @@
                 <button class="btn" style="background:var(--primary)" onclick="batchRename()">✏️ Đổi Tên</button>
                 <button class="btn" style="background:#8b5cf6" onclick="startSlideshow()">🎬 Phát Slide (Chỉ Ảnh)</button>
                 <button class="btn" style="background:var(--success)" onclick="toggleBatchSelect()">☑️ Chọn Nhiều</button>
+                <button class="btn" style="background:#0ea5e9; display:none;" id="selectAllBtn" onclick="toggleSelectAll()">✅ Chọn Tất Cả</button>
                 <button class="btn" style="background:#ec4899; display:none;" id="batchGalleryBtn" onclick="openGalleryModal()">🚀 Tạo Landing Page</button>
                 <button class="btn" style="background:var(--warning); display:none;" id="batchWmBtn" onclick="openBatchModal()">🛡️ Đóng Dấu & Nén Auto-ZIP</button>
                 <button class="btn" style="background:var(--danger)" id="deleteFilterBtn" onclick="deleteFiltered()">🗑️ Xóa Lọc</button>
@@ -787,12 +788,54 @@
     function formatSize(bytes) { if (!bytes) return "0 KB"; const k = 1024; if (bytes < k * k) return (bytes / k).toFixed(1) + " KB"; return (bytes / (k * k)).toFixed(2) + " MB"; }
 
     let isBatchMode = false;
+    let isAllSelected = false; // Biến lưu trạng thái chọn tất cả
+
     window.toggleBatchSelect = () => {
         isBatchMode = !isBatchMode;
         document.querySelectorAll('.img-checkbox').forEach(c => { c.style.display = isBatchMode ? 'block' : 'none'; c.checked = false; });
-        document.getElementById('batchWmBtn').style.display = isBatchMode ? 'inline-block' : 'none'; document.getElementById('batchGalleryBtn').style.display = isBatchMode ? 'inline-block' : 'none';
+        
+        // Hiện/ẩn các nút thao tác hàng loạt
+        document.getElementById('batchWmBtn').style.display = isBatchMode ? 'inline-block' : 'none'; 
+        document.getElementById('batchGalleryBtn').style.display = isBatchMode ? 'inline-block' : 'none';
+        
+        // Hiện/ẩn và reset nút Chọn Tất Cả
+        const selectAllBtn = document.getElementById('selectAllBtn');
+        if(selectAllBtn) {
+            selectAllBtn.style.display = isBatchMode ? 'inline-block' : 'none';
+            isAllSelected = false;
+            selectAllBtn.innerHTML = "✅ Chọn Tất Cả";
+        }
     };
+    
+    window.toggleSelectAll = () => {
+        if (currentFilteredKeys.length === 0) {
+            return showToast("Không có tệp nào trong bộ lọc để chọn!");
+        }
 
+        isAllSelected = !isAllSelected;
+
+        // XỬ LÝ QUAN TRỌNG: Nếu đang Load More (chưa hiển thị hết file trong bộ lọc)
+        // Bắt buộc phải render toàn bộ file ra DOM để tạo checkbox
+        if (isAllSelected && renderIndex < currentFilteredKeys.length) {
+            const end = currentFilteredKeys.length;
+            for (let i = renderIndex; i < end; i++) {
+                renderItem(cloudData[currentFilteredKeys[i]], 'historyList', currentFilteredKeys[i]);
+            }
+            renderIndex = end;
+            document.getElementById('loadMoreTrigger').style.display = 'none';
+        }
+
+        // Đánh dấu tick hoặc bỏ tick toàn bộ checkbox hiển thị
+        document.querySelectorAll('.img-checkbox').forEach(c => {
+            // Đảm bảo checkbox đó đang hiển thị (phòng trường hợp DOM rác)
+            if (c.style.display !== 'none') {
+                c.checked = isAllSelected;
+            }
+        });
+
+        // Đổi chữ trên nút
+        document.getElementById('selectAllBtn').innerHTML = isAllSelected ? "☑️ Bỏ Chọn Tất Cả" : "✅ Chọn Tất Cả";
+    };
     function renderItem(item, containerId, fbKey, isTrash = false) {
         const div = document.createElement('div'); div.className = 'media-card';
         const isImg = item.isImage !== false;
@@ -935,6 +978,12 @@
 
         sortedKeys = keys; currentFilteredKeys = keys; document.getElementById('historyList').innerHTML = ''; renderIndex = 0; 
         document.getElementById('deleteFilterBtn').innerText = `🗑️ Xóa Lọc (${keys.length})`; loadMoreItems();
+        // Bỏ vào cuối hàm window.filterData
+        if(isBatchMode) {
+            isAllSelected = false;
+            const btn = document.getElementById('selectAllBtn');
+            if(btn) btn.innerHTML = "✅ Chọn Tất Cả";
+        }
     };
 
     function loadMoreItems() {
